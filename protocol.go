@@ -1,39 +1,69 @@
 package completions
 
 import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
 	"net/http"
-	"os"
 	"time"
 )
 
-var hc = &http.Client{
-	Timeout: time.Second * 10,
+const (
+	// protocol headers
+	HeaderPrefix   = "FnProject-"
+	ThreadIDHeader = HeaderPrefix + "ThreadID"
+	StageIDHeader  = HeaderPrefix + "StageID"
+
+	// standard headers
+	ContentTypeHeader = "Content-Type"
+	GobMediaHeader    = "application/x-gob"
+)
+
+type completerPotocol struct {
+	baseURL string
 }
 
-func newCompletionService() completionService {
-	if url, ok := os.LookupEnv("COMPLETER_BASE_URL"); !ok {
-		panic("Missing COMPLETER_BASE_URL configuration in environment!")
-	} else {
-		return &httpCompletionService{url: url}
+func (p *completerPotocol) parseThreadID(res *http.Response) threadID {
+	return threadID(res.Header.Get(ThreadIDHeader))
+}
+
+func (p *completerPotocol) parseStageID(res *http.Response) completionID {
+	return completionID(res.Header.Get(StageIDHeader))
+}
+
+func (p *completerPotocol) createThreadReq(functionID string) *http.Request {
+	url := fmt.Sprintf("%s/graph?functionId=%s", p.baseURL, functionID)
+	req, err := http.NewRequest("POST", url, &bytes.Buffer{})
+	if err != nil {
+		panic("Failed to create request object")
 	}
+	return req
 }
 
-type threadID string
-type completionID string
-
-type completionService interface {
-	createThread() threadID
-	completedValue(value interface{}) completionID
+func (p *completerPotocol) completedValueReq(threadID threadID, value interface{}) *http.Request {
+	url := fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, threadID)
+	req, err := http.NewRequest("POST", url, encodeGob(value))
+	req.Header.Set(ContentTypeHeader, GobMediaHeader)
+	if err != nil {
+		panic("Failed to create request object")
+	}
+	return req
 }
 
-type httpCompletionService struct {
-	url string
+func (p *completerPotocol) delayReq(threadID threadID, duration time.Duration) *http.Request {
+	url := fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, threadID, int64(duration))
+	req, err := http.NewRequest("POST", url, &bytes.Buffer{})
+	if err != nil {
+		panic("Failed to create request object")
+	}
+	return req
 }
 
-func (cs *httpCompletionService) createThread() threadID {
-	return ""
-}
-
-func (cs *httpCompletionService) completedValue(value interface{}) completionID {
-	return ""
+func encodeGob(value interface{}) *bytes.Buffer {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(value); err != nil {
+		panic("Failed to encode gob: " + err.Error())
+	}
+	return &buf
 }

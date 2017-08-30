@@ -7,22 +7,39 @@ import (
 	"time"
 )
 
-var completionSvc = newCompletionService()
+type CloudThreadFunction func(ct CloudThread)
 
-func NewCloudThread() CloudThread {
+func WithCloudThread(fn CloudThreadFunction) {
 	if isContinuation() {
+		// TODO invoke continuation
+		return
 	}
-	return &cloudThread{threadID: completionSvc.createThread()}
+	fn(newCloudThread())
+}
+
+func newCloudThread() *cloudThread {
+	completer := newCompleterClient()
+	codec := newCodec()
+	return &cloudThread{
+		completer: completer,
+		threadID:  completer.createThread(getFunctionID(codec)),
+		codec:     codec,
+	}
 }
 
 func isContinuation() bool {
+	_, ok := lookupEnv("header_fnproject-stageid")
+	return ok
+}
+
+func lookupEnv(key string) (string, bool) {
 	for _, e := range os.Environ() {
 		kv := strings.Split(e, "=")
-		if strings.ToLower(kv[0]) == "header_fnproject-stageid" {
-			return true
+		if strings.ToLower(kv[0]) == key {
+			return kv[1], true
 		}
 	}
-	return false
+	return "", false
 }
 
 type CloudThread interface {
@@ -30,7 +47,7 @@ type CloudThread interface {
 	// InvokeFunction(functionID string, method HTTPMethod, headers Headers) CloudFuture
 	//Supply(fn interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
-	//CompletedValue(value interface{}) CloudFuture
+	CompletedValue(value interface{}) CloudFuture
 	//CreateExternalFuture() ExternalCloudFuture
 	//AllOf(futures ...CloudFuture) CloudFuture
 	//AnyOf(futures ...CloudFuture) CloudFuture
@@ -57,14 +74,21 @@ type ExternalCloudFuture interface {
 }
 
 type cloudThread struct {
-	threadID threadID
+	completer completerClient
+	threadID  threadID
+	codec     codec
 }
 
 func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
-	return &cloudFuture{}
+	return &cloudFuture{completionID: ct.completer.delay(ct.threadID, duration)}
+}
+
+func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
+	return &cloudFuture{completionID: ct.completer.completedValue(ct.threadID, value)}
 }
 
 type cloudFuture struct {
+	completionID completionID
 }
 
 type externalCloudFuture struct {
