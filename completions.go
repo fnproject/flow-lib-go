@@ -92,4 +92,5 @@ type cloudFuture struct {
 }
 
 type externalCloudFuture struct {
+	cloudFuture
 }
