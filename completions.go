@@ -49,6 +49,7 @@ type CloudThread interface {
 	//Supply(fn interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
 	CompletedValue(value interface{}) CloudFuture
+	Commit()
 	//CreateExternalFuture() ExternalCloudFuture
 	//AllOf(futures ...CloudFuture) CloudFuture
 	//AnyOf(futures ...CloudFuture) CloudFuture
@@ -87,6 +88,10 @@ func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
 
 func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
 	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value))
+}
+
+func (ct *cloudThread) Commit() {
+	ct.completer.commit(ct.threadID)
 }
 
 type cloudFuture struct {

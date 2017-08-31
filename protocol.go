@@ -48,29 +48,25 @@ func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 	return req
 }
 
-func (p *completerProtocol) completedValueReq(threadID threadID, value interface{}) *http.Request {
-	url := fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, threadID)
-	req, err := http.NewRequest("POST", url, encodeGob(value))
-	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
-	req.Header.Set(ContentTypeHeader, GobMediaHeader)
-	if err != nil {
-		panic("Failed to create request object")
-	}
-	return req
+func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *http.Request {
+	return createRequest("POST", fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, tid), encodeGob(value))
 }
 
-func (p *completerProtocol) delayReq(threadID threadID, duration time.Duration) *http.Request {
-	url := fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, threadID, int64(duration))
-	req, err := http.NewRequest("POST", url, nil)
-	if err != nil {
-		panic("Failed to create request object")
-	}
-	return req
+func (p *completerProtocol) delayReq(tid threadID, duration time.Duration) *http.Request {
+	return createRequest("POST", fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, tid, int64(duration)), nil)
 }
 
-func (p *completerProtocol) getStageReq(threadID threadID, completionID completionID) *http.Request {
-	url := fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, threadID, completionID)
-	req, err := http.NewRequest("GET", url, nil)
+func (p *completerProtocol) getStageReq(tid threadID, cid completionID) *http.Request {
+	return createRequest("GET", fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, tid, cid), nil)
+}
+
+func (p *completerProtocol) commit(tid threadID) *http.Request {
+	return createRequest("POST", fmt.Sprintf("%s/graph/%s/commit", p.baseURL, tid), nil)
+}
+
+// panics if the request can't be created
+func createRequest(method string, url string, r io.Reader) *http.Request {
+	req, err := http.NewRequest(method, url, r)
 	if err != nil {
 		panic("Failed to create request object")
 	}

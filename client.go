@@ -26,6 +26,7 @@ type completerClient interface {
 	completedValue(tid threadID, value interface{}) completionID
 	delay(tid threadID, duration time.Duration) completionID
 	get(tid threadID, cid completionID, val interface{})
+	commit(tid threadID)
 }
 
 type completerServiceClient struct {
@@ -33,7 +34,7 @@ type completerServiceClient struct {
 }
 
 func (cs *completerServiceClient) createThread(functionID string) threadID {
-	res := cs.safePost(cs.protocol.createThreadReq(functionID))
+	res := cs.safeReq(cs.protocol.createThreadReq(functionID))
 	return cs.protocol.parseThreadID(res)
 }
 
@@ -55,11 +56,15 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	decodeGob(res.Body, val)
 }
 
-func (cs *completerServiceClient) addStage(req *http.Request) completionID {
-	return cs.protocol.parseStageID(cs.safePost(req))
+func (cs *completerServiceClient) commit(tid threadID) {
+	cs.safeReq(cs.protocol.commit(tid))
 }
 
-func (cs *completerServiceClient) safePost(req *http.Request) *http.Response {
+func (cs *completerServiceClient) addStage(req *http.Request) completionID {
+	return cs.protocol.parseStageID(cs.safeReq(req))
+}
+
+func (cs *completerServiceClient) safeReq(req *http.Request) *http.Response {
 	res, err := hc.Do(req)
 	if err != nil {
 		panic("Failed request: " + err.Error())
