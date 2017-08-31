@@ -49,7 +49,10 @@ func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 }
 
 func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *http.Request {
-	return createRequest("POST", fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, tid), encodeGob(value))
+	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, tid), encodeGob(value))
+	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+	req.Header.Set(ContentTypeHeader, GobMediaHeader)
+	return req
 }
 
 func (p *completerProtocol) delayReq(tid threadID, duration time.Duration) *http.Request {
