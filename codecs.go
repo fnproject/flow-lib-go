@@ -15,7 +15,7 @@ type defaultCodec struct {
 }
 
 func newCodec() codec {
-	if format := lookupReqEnv("FN_FORMAT"); strings.ToLower(format) != "default" {
+	if format, ok := lookupEnv("FN_FORMAT"); ok && strings.ToLower(format) == "http" {
 		panic("Hot functions not supported!")
 	}
 	return &defaultCodec{
