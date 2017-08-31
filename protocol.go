@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -22,19 +23,23 @@ const (
 	GobMediaHeader    = "application/x-gob"
 )
 
-type completerPotocol struct {
+type completerProtocol struct {
 	baseURL string
 }
 
-func (p *completerPotocol) parseThreadID(res *http.Response) threadID {
+func newCompleterProtocol(baseURL string) *completerProtocol {
+	return &completerProtocol{baseURL: baseURL}
+}
+
+func (p *completerProtocol) parseThreadID(res *http.Response) threadID {
 	return threadID(res.Header.Get(ThreadIDHeader))
 }
 
-func (p *completerPotocol) parseStageID(res *http.Response) completionID {
+func (p *completerProtocol) parseStageID(res *http.Response) completionID {
 	return completionID(res.Header.Get(StageIDHeader))
 }
 
-func (p *completerPotocol) createThreadReq(functionID string) *http.Request {
+func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 	url := fmt.Sprintf("%s/graph?functionId=%s", p.baseURL, functionID)
 	req, err := http.NewRequest("POST", url, &bytes.Buffer{})
 	if err != nil {
@@ -43,7 +48,7 @@ func (p *completerPotocol) createThreadReq(functionID string) *http.Request {
 	return req
 }
 
-func (p *completerPotocol) completedValueReq(threadID threadID, value interface{}) *http.Request {
+func (p *completerProtocol) completedValueReq(threadID threadID, value interface{}) *http.Request {
 	url := fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, threadID)
 	req, err := http.NewRequest("POST", url, encodeGob(value))
 	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
@@ -54,9 +59,18 @@ func (p *completerPotocol) completedValueReq(threadID threadID, value interface{
 	return req
 }
 
-func (p *completerPotocol) delayReq(threadID threadID, duration time.Duration) *http.Request {
+func (p *completerProtocol) delayReq(threadID threadID, duration time.Duration) *http.Request {
 	url := fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, threadID, int64(duration))
 	req, err := http.NewRequest("POST", url, &bytes.Buffer{})
+	if err != nil {
+		panic("Failed to create request object")
+	}
+	return req
+}
+
+func (p *completerProtocol) getStageReq(threadID threadID, completionID completionID) *http.Request {
+	url := fmt.Sprintf("%s/graph/%s/%s", p.baseURL, threadID, completionID)
+	req, err := http.NewRequest("GET", url, &bytes.Buffer{})
 	if err != nil {
 		panic("Failed to create request object")
 	}
@@ -70,4 +84,13 @@ func encodeGob(value interface{}) *bytes.Buffer {
 		panic("Failed to encode gob: " + err.Error())
 	}
 	return &buf
+}
+
+func decodeGob(r io.Reader) interface{} {
+	dec := gob.NewDecoder(r)
+	var decoded interface{}
+	if err := dec.Decode(decoded); err != nil {
+		panic("Failed to decode gob: " + err.Error())
+	}
+	return decoded
 }

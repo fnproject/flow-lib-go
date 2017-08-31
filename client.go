@@ -14,7 +14,7 @@ func newCompleterClient() completerClient {
 	if url, ok := os.LookupEnv("COMPLETER_BASE_URL"); !ok {
 		panic("Missing COMPLETER_BASE_URL configuration in environment!")
 	} else {
-		return &completerServiceClient{protocol: &completerPotocol{baseURL: url}}
+		return &completerServiceClient{protocol: newCompleterProtocol(url)}
 	}
 }
 
@@ -23,12 +23,13 @@ type completionID string
 
 type completerClient interface {
 	createThread(functionID string) threadID
-	completedValue(threadID threadID, value interface{}) completionID
-	delay(threadID threadID, duration time.Duration) completionID
+	completedValue(tid threadID, value interface{}) completionID
+	delay(tid threadID, duration time.Duration) completionID
+	get(tid threadID, cid completionID) interface{}
 }
 
 type completerServiceClient struct {
-	protocol *completerPotocol
+	protocol *completerProtocol
 }
 
 func (cs *completerServiceClient) createThread(functionID string) threadID {
@@ -36,14 +37,21 @@ func (cs *completerServiceClient) createThread(functionID string) threadID {
 	return cs.protocol.parseThreadID(res)
 }
 
-func (cs *completerServiceClient) completedValue(threadID threadID, value interface{}) completionID {
-	//req.Header.Set("Content-Type", bodyType)
-	return cs.addStage(cs.protocol.completedValueReq(threadID, value))
+func (cs *completerServiceClient) completedValue(tid threadID, value interface{}) completionID {
+	return cs.addStage(cs.protocol.completedValueReq(tid, value))
 }
 
-func (cs *completerServiceClient) delay(threadID threadID, duration time.Duration) completionID {
-	//req.Header.Set("Content-Type", bodyType)
-	return cs.addStage(cs.protocol.delayReq(threadID, duration))
+func (cs *completerServiceClient) delay(tid threadID, duration time.Duration) completionID {
+	return cs.addStage(cs.protocol.delayReq(tid, duration))
+}
+
+func (cs *completerServiceClient) get(tid threadID, cid completionID) interface{} {
+	req := cs.protocol.getStageReq(tid, cid)
+	res, err := hc.Do(req)
+	if err != nil {
+		panic("Failed request: " + err.Error())
+	}
+	return res
 }
 
 func (cs *completerServiceClient) addStage(req *http.Request) completionID {
