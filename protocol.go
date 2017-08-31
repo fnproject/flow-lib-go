@@ -79,6 +79,7 @@ func (p *completerProtocol) getStageReq(threadID threadID, completionID completi
 
 func encodeGob(value interface{}) *bytes.Buffer {
 	var buf bytes.Buffer
+	buf.Len()
 	enc := gob.NewEncoder(&buf)
 	if err := enc.Encode(value); err != nil {
 		panic("Failed to encode gob: " + err.Error())
@@ -86,11 +87,9 @@ func encodeGob(value interface{}) *bytes.Buffer {
 	return &buf
 }
 
-func decodeGob(r io.Reader) interface{} {
+func decodeGob(r io.Reader, val interface{}) {
 	dec := gob.NewDecoder(r)
-	var decoded interface{}
-	if err := dec.Decode(decoded); err != nil {
+	if err := dec.Decode(val); err != nil {
 		panic("Failed to decode gob: " + err.Error())
 	}
-	return decoded
 }

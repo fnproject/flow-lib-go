@@ -25,7 +25,7 @@ type completerClient interface {
 	createThread(functionID string) threadID
 	completedValue(tid threadID, value interface{}) completionID
 	delay(tid threadID, duration time.Duration) completionID
-	get(tid threadID, cid completionID) interface{}
+	get(tid threadID, cid completionID, val interface{})
 }
 
 type completerServiceClient struct {
@@ -45,14 +45,14 @@ func (cs *completerServiceClient) delay(tid threadID, duration time.Duration) co
 	return cs.addStage(cs.protocol.delayReq(tid, duration))
 }
 
-func (cs *completerServiceClient) get(tid threadID, cid completionID) interface{} {
+func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}) {
 	req := cs.protocol.getStageReq(tid, cid)
 	res, err := hc.Do(req)
 	if err != nil {
 		panic("Failed request: " + err.Error())
 	}
 	defer res.Body.Close()
-	return decodeGob(res.Body)
+	decodeGob(res.Body, val)
 }
 
 func (cs *completerServiceClient) addStage(req *http.Request) completionID {

@@ -55,7 +55,7 @@ type CloudThread interface {
 }
 
 type CloudFuture interface {
-	Get() interface{}
+	Get(val interface{})
 	//ThenApply(fn interface{}) CloudFuture
 	//ThenCompose(fn interface{}) CloudFuture
 	//ThenCombine(fn interface{}) CloudFuture
@@ -98,8 +98,8 @@ func (ct *cloudThread) newCloudFuture(cid completionID) CloudFuture {
 	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
-func (cf *cloudFuture) Get() interface{} {
-	return cf.completer.get(cf.threadID, cf.completionID)
+func (cf *cloudFuture) Get(val interface{}) {
+	cf.completer.get(cf.threadID, cf.completionID, val)
 }
 
 type externalCloudFuture struct {
