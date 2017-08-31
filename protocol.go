@@ -10,9 +10,12 @@ import (
 
 const (
 	// protocol headers
-	HeaderPrefix   = "FnProject-"
-	ThreadIDHeader = HeaderPrefix + "ThreadID"
-	StageIDHeader  = HeaderPrefix + "StageID"
+	HeaderPrefix    = "FnProject-"
+	DatumTypeHeader = HeaderPrefix + "Datumtype"
+	ThreadIDHeader  = HeaderPrefix + "ThreadID"
+	StageIDHeader   = HeaderPrefix + "StageID"
+
+	BlobDatumHeader = "blob"
 
 	// standard headers
 	ContentTypeHeader = "Content-Type"
@@ -43,6 +46,7 @@ func (p *completerPotocol) createThreadReq(functionID string) *http.Request {
 func (p *completerPotocol) completedValueReq(threadID threadID, value interface{}) *http.Request {
 	url := fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, threadID)
 	req, err := http.NewRequest("POST", url, encodeGob(value))
+	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
 	req.Header.Set(ContentTypeHeader, GobMediaHeader)
 	if err != nil {
 		panic("Failed to create request object")
