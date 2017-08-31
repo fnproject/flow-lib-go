@@ -14,7 +14,9 @@ func WithCloudThread(fn CloudThreadFunction) {
 		// TODO invoke continuation
 		return
 	}
-	fn(newCloudThread())
+	ct := newCloudThread()
+	defer ct.commit()
+	fn(ct)
 }
 
 func newCloudThread() *cloudThread {
@@ -49,7 +51,6 @@ type CloudThread interface {
 	//Supply(fn interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
 	CompletedValue(value interface{}) CloudFuture
-	Commit()
 	//CreateExternalFuture() ExternalCloudFuture
 	//AllOf(futures ...CloudFuture) CloudFuture
 	//AnyOf(futures ...CloudFuture) CloudFuture
@@ -90,7 +91,7 @@ func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
 	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value))
 }
 
-func (ct *cloudThread) Commit() {
+func (ct *cloudThread) commit() {
 	ct.completer.commit(ct.threadID)
 }
 
