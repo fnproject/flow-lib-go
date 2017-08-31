@@ -41,7 +41,7 @@ func (p *completerProtocol) parseStageID(res *http.Response) completionID {
 
 func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 	url := fmt.Sprintf("%s/graph?functionId=%s", p.baseURL, functionID)
-	req, err := http.NewRequest("POST", url, &bytes.Buffer{})
+	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		panic("Failed to create request object")
 	}
@@ -61,7 +61,7 @@ func (p *completerProtocol) completedValueReq(threadID threadID, value interface
 
 func (p *completerProtocol) delayReq(threadID threadID, duration time.Duration) *http.Request {
 	url := fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, threadID, int64(duration))
-	req, err := http.NewRequest("POST", url, &bytes.Buffer{})
+	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		panic("Failed to create request object")
 	}
@@ -70,7 +70,7 @@ func (p *completerProtocol) delayReq(threadID threadID, duration time.Duration) 
 
 func (p *completerProtocol) getStageReq(threadID threadID, completionID completionID) *http.Request {
 	url := fmt.Sprintf("%s/graph/%s/%s", p.baseURL, threadID, completionID)
-	req, err := http.NewRequest("GET", url, &bytes.Buffer{})
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic("Failed to create request object")
 	}

@@ -51,7 +51,8 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID) interface{
 	if err != nil {
 		panic("Failed request: " + err.Error())
 	}
-	return res
+	defer res.Body.Close()
+	return decodeGob(res.Body)
 }
 
 func (cs *completerServiceClient) addStage(req *http.Request) completionID {
