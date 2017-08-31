@@ -32,10 +32,11 @@ func isContinuation() bool {
 	return ok
 }
 
+// case insensitive lookup
 func lookupEnv(key string) (string, bool) {
 	for _, e := range os.Environ() {
 		kv := strings.Split(e, "=")
-		if strings.ToLower(kv[0]) == key {
+		if strings.ToLower(kv[0]) == strings.ToLower(key) {
 			return kv[1], true
 		}
 	}
