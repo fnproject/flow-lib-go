@@ -82,16 +82,20 @@ type cloudThread struct {
 }
 
 func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
-	return &cloudFuture{completionID: ct.completer.delay(ct.threadID, duration)}
+	return ct.newCloudFuture(ct.completer.delay(ct.threadID, duration))
 }
 
 func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
-	return &cloudFuture{completionID: ct.completer.completedValue(ct.threadID, value)}
+	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value))
 }
 
 type cloudFuture struct {
-	cloudThread
+	*cloudThread
 	completionID completionID
+}
+
+func (ct *cloudThread) newCloudFuture(cid completionID) CloudFuture {
+	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
 func (cf *cloudFuture) Get() interface{} {
