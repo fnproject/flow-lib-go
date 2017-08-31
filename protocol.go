@@ -69,7 +69,7 @@ func (p *completerProtocol) delayReq(threadID threadID, duration time.Duration) 
 }
 
 func (p *completerProtocol) getStageReq(threadID threadID, completionID completionID) *http.Request {
-	url := fmt.Sprintf("%s/graph/%s/%s", p.baseURL, threadID, completionID)
+	url := fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, threadID, completionID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic("Failed to create request object")
