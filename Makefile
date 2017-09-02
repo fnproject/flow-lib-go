@@ -14,5 +14,4 @@ test:
 	go test -v $(GOPACKAGES)
 
 build:  $(GOFILES)
-	go build -o go-cloudthreads
-
+	go build
