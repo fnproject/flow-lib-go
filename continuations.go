@@ -9,11 +9,12 @@ var registry = make(map[string]continuationEntry)
 
 type continuationEntry interface {
 	invoke(args ...interface{}) (interface{}, error)
+	args() []reflect.Kind
 }
 
 type functionContinuationEntry struct {
 	continuation interface{}
-	args         []reflect.Kind
+	kinds        []reflect.Kind
 }
 
 func (e *functionContinuationEntry) invoke(args ...interface{}) (result interface{}, err error) {
@@ -34,6 +35,10 @@ func (e *functionContinuationEntry) invoke(args ...interface{}) (result interfac
 	default:
 		return nil, fmt.Errorf("Invalid continuation")
 	}
+}
+
+func (e *functionContinuationEntry) args() []reflect.Kind {
+	return e.kinds
 }
 
 func valToInterface(v reflect.Value) interface{} {
@@ -61,15 +66,13 @@ func key(continuation interface{}) string {
 	return rt.String()
 }
 
-//type FunctionContinuation func(arg0 interface{}) (interface{}, error)
-
 func Register(continuation interface{}, args ...reflect.Kind) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
 	registry[key(continuation)] = &functionContinuationEntry{
 		continuation: continuation,
-		args:         args,
+		kinds:        args,
 	}
 }
 
