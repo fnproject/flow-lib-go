@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -21,6 +22,8 @@ const (
 	// standard headers
 	ContentTypeHeader = "Content-Type"
 	GobMediaHeader    = "application/x-gob"
+
+	MaxContinuationArgCount = 2
 )
 
 type completerProtocol struct {
@@ -91,4 +94,31 @@ func decodeGob(r io.Reader, val interface{}) {
 	if err := dec.Decode(val); err != nil {
 		panic("Failed to decode gob: " + err.Error())
 	}
+}
+
+func decodeTypedGob(r io.Reader, t reflect.Type) interface{} {
+	dec := gob.NewDecoder(r)
+	v := reflect.New(t)
+	ref := v.Interface()
+	if err := dec.Decode(ref); err != nil {
+		panic("Failed to decode gob: " + err.Error())
+	}
+	return ref
+}
+
+func continuationArgTypes(continuation interface{}) (argTypes []reflect.Type) {
+	if reflect.TypeOf(continuation).Kind() != reflect.Func {
+		panic("Continuation must be a function!")
+	}
+
+	fn := reflect.TypeOf(continuation)
+	argC := fn.NumIn() // inbound params
+	if argC > MaxContinuationArgCount {
+		panic(fmt.Sprintf("Continuations may take a maximum of %d parameters", MaxContinuationArgCount))
+	}
+	argTypes = make([]reflect.Type, argC)
+	for i := 0; i < argC; i++ {
+		argTypes[i] = fn.In(i)
+	}
+	return
 }

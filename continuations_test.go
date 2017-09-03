@@ -2,7 +2,6 @@ package completions
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 )
 
 func TestContinuationReturnsErrorOnPanic(t *testing.T) {
-	Register(thatPanics, reflect.Int)
+	RegisterContinuation(thatPanics)
 	// assert equality
 	result, err := invoke(thatPanics, 12)
 	assert.Equal(t, fmt.Errorf("this panicked"), err)
@@ -18,7 +17,7 @@ func TestContinuationReturnsErrorOnPanic(t *testing.T) {
 }
 
 func TestContinuationReturnsErrorOnBadArg(t *testing.T) {
-	Register(toUpperString, reflect.Int)
+	RegisterContinuation(toUpperString)
 	// assert equality
 	result, err := invoke(toUpperString, 12)
 	assert.Error(t, err)
@@ -27,12 +26,12 @@ func TestContinuationReturnsErrorOnBadArg(t *testing.T) {
 
 func TestContinuationPanicsWithoutFunctionArg(t *testing.T) {
 	assert.Panics(t, func() {
-		Register("foo", reflect.String)
+		RegisterContinuation("foo")
 	})
 }
 
 func TestContinuationSuccess(t *testing.T) {
-	Register(toUpperString, reflect.String)
+	RegisterContinuation(toUpperString)
 	// assert equality
 	result, err := invoke(toUpperString, "foo")
 	assert.Equal(t, "FOO", result)
@@ -40,7 +39,7 @@ func TestContinuationSuccess(t *testing.T) {
 }
 
 func TestContinuationWithNilError(t *testing.T) {
-	Register(toUpperStringWithNilError, reflect.String)
+	RegisterContinuation(toUpperStringWithNilError)
 	// assert equality
 	result, err := invoke(toUpperStringWithNilError, "foo")
 	assert.Equal(t, "FOO", result)
@@ -48,7 +47,7 @@ func TestContinuationWithNilError(t *testing.T) {
 }
 
 func TestContinuationWithError(t *testing.T) {
-	Register(toUpperStringWithError, reflect.String)
+	RegisterContinuation(toUpperStringWithError)
 	// assert equality
 	result, err := invoke(toUpperStringWithError, "foo")
 	assert.Equal(t, fmt.Errorf("My error"), err)

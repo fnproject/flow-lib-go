@@ -5,26 +5,16 @@ import (
 	"reflect"
 )
 
-var registry = make(map[string]continuationEntry)
+var continuations = make(map[string]interface{})
 
-type continuationEntry interface {
-	invoke(args ...interface{}) (interface{}, error)
-	args() []reflect.Kind
-}
-
-type functionContinuationEntry struct {
-	continuation interface{}
-	kinds        []reflect.Kind
-}
-
-func (e *functionContinuationEntry) invoke(args ...interface{}) (result interface{}, err error) {
+func invoke(continuation interface{}, args ...interface{}) (result interface{}, err error) {
 	// catch panics and return them as errors
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
 	}()
-	values := invokeContinuation(e.continuation, args...)
+	values := invokeContinuation(continuation, args...)
 	switch len(values) {
 	case 0:
 		return nil, nil
@@ -35,10 +25,6 @@ func (e *functionContinuationEntry) invoke(args ...interface{}) (result interfac
 	default:
 		return nil, fmt.Errorf("Invalid continuation")
 	}
-}
-
-func (e *functionContinuationEntry) args() []reflect.Kind {
-	return e.kinds
 }
 
 func valToInterface(v reflect.Value) interface{} {
@@ -52,8 +38,8 @@ func valToError(v reflect.Value) error {
 	return valToInterface(v).(error)
 }
 
-func invokeContinuation(fn interface{}, args ...interface{}) []reflect.Value {
-	v := reflect.ValueOf(fn)
+func invokeContinuation(continuation interface{}, args ...interface{}) []reflect.Value {
+	v := reflect.ValueOf(continuation)
 	rargs := make([]reflect.Value, len(args))
 	for i, a := range args {
 		rargs[i] = reflect.ValueOf(a)
@@ -66,20 +52,17 @@ func key(continuation interface{}) string {
 	return rt.String()
 }
 
-func Register(continuation interface{}, args ...reflect.Kind) {
+func RegisterContinuation(continuation interface{}) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
-	registry[key(continuation)] = &functionContinuationEntry{
-		continuation: continuation,
-		kinds:        args,
-	}
+	continuations[key(continuation)] = continuation
 }
 
-func invoke(continuation interface{}, args ...interface{}) (interface{}, error) {
-	if e, ok := registry[key(continuation)]; !ok {
+func invokeFromRegistry(continuationKey string, args ...interface{}) (interface{}, error) {
+	if e, ok := continuations[continuationKey]; !ok {
 		panic("Continuation not registered")
 	} else {
-		return e.invoke(args...)
+		return invoke(e, args...)
 	}
 }

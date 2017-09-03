@@ -57,7 +57,7 @@ type CloudThread interface {
 }
 
 type CloudFuture interface {
-	Join(result interface{})
+	Join(result interface{}) // TODO turn this into a channel
 	//ThenApply(fn interface{}) CloudFuture
 	//ThenCompose(fn interface{}) CloudFuture
 	//ThenCombine(fn interface{}) CloudFuture
