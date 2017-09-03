@@ -35,7 +35,37 @@ func TestContinuationTypesTwoArgs(t *testing.T) {
 }
 
 func TestContinuationTypesExceedsArgs(t *testing.T) {
-	assert.Panics(t, func() { continuationArgTypes(withThreeArgs) })
+	assert.Panics(t, func() {
+		continuationArgTypes(withThreeArgs)
+	})
+}
+
+func TestDecodeContinuationArgsWithOne(t *testing.T) {
+	stringArg := "foo"
+	//bufs := []*bytes.Buffer{encodeGob(&stringArg)}
+	args := decodeContinuationArgs(withOneArg, encodeGob(&stringArg))
+	assert.Equal(t, 1, len(args))
+	assert.IsType(t, &stringArg, args[0])
+}
+
+func TestDecodeContinuationArgsWithTwo(t *testing.T) {
+	stringArg := "foo"
+	intArg := 25
+	args := decodeContinuationArgs(withTwoArgs, encodeGob(&stringArg), encodeGob(&intArg))
+	assert.Equal(t, 2, len(args))
+	assert.IsType(t, &stringArg, args[0])
+	assert.IsType(t, &intArg, args[1])
+}
+
+func TestDecodeContinuationArgsThatFails(t *testing.T) {
+	stringArg := "foo"
+	intArg := 25
+	assert.Panics(t, func() {
+		decodeContinuationArgs(withOneArg, encodeGob(&stringArg), encodeGob(&intArg))
+	})
+}
+
+func withOneArg(one string) {
 }
 
 func withTwoArgs(one string, two int) {

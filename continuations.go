@@ -47,7 +47,7 @@ func invokeContinuation(continuation interface{}, args ...interface{}) []reflect
 	return v.Call(rargs)
 }
 
-func key(continuation interface{}) string {
+func continuationKey(continuation interface{}) string {
 	rt := reflect.TypeOf(continuation)
 	return rt.String()
 }
@@ -56,7 +56,7 @@ func RegisterContinuation(continuation interface{}) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
-	continuations[key(continuation)] = continuation
+	continuations[continuationKey(continuation)] = continuation
 }
 
 func invokeFromRegistry(continuationKey string, args ...interface{}) (interface{}, error) {

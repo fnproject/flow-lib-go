@@ -122,3 +122,15 @@ func continuationArgTypes(continuation interface{}) (argTypes []reflect.Type) {
 	}
 	return
 }
+
+func decodeContinuationArgs(continuation interface{}, inputs ...io.Reader) (results []interface{}) {
+	argTypes := continuationArgTypes(continuation)
+	results = make([]interface{}, len(argTypes))
+	if len(argTypes) != len(inputs) {
+		panic("Invalid number of arguments decoded for continuation")
+	}
+	for i, input := range inputs {
+		results[i] = decodeTypedGob(input, argTypes[i])
+	}
+	return
+}
