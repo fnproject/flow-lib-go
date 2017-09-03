@@ -11,7 +11,7 @@ dep-up:
 	glide up --strip-vendor
 
 test: 
-	go test -v $(GOPACKAGES)
+	go test -v -cover $(GOPACKAGES)
 
 build:  $(GOFILES)
 	go build
