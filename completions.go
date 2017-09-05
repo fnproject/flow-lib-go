@@ -11,7 +11,8 @@ type CloudThreadFunction func(ct CloudThread)
 
 func WithCloudThread(fn CloudThreadFunction) {
 	if isContinuation() {
-		// TODO invoke continuation
+		b := encodeGob("done")
+		b.WriteTo(os.Stdout)
 		return
 	}
 	ct := newCloudThread()
