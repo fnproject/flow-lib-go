@@ -1,6 +1,7 @@
 package completions
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -11,8 +12,9 @@ type CloudThreadFunction func(ct CloudThread)
 
 func WithCloudThread(fn CloudThreadFunction) {
 	if isContinuation() {
-		b := encodeGob("done")
-		b.WriteTo(os.Stdout)
+		fmt.Printf("Done")
+		//b := encodeGob("done")
+		//b.WriteTo(os.Stdout)
 		return
 	}
 	ct := newCloudThread()
