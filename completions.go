@@ -15,8 +15,8 @@ func WithCloudThread(fn CloudThreadFunction) {
 		fmt.Printf("Done")
 		//b := encodeGob("done")
 		//b.WriteTo(os.Stdout)
-		return
 	}
+	return
 	ct := newCloudThread()
 	defer ct.commit()
 	fn(ct)
