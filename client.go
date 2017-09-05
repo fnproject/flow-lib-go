@@ -27,6 +27,7 @@ type completerClient interface {
 	delay(tid threadID, duration time.Duration) completionID
 	get(tid threadID, cid completionID, val interface{})
 	commit(tid threadID)
+	thenApply(tid threadID, cid completionID, function interface{}) completionID
 }
 
 type completerServiceClient struct {
@@ -40,6 +41,10 @@ func (cs *completerServiceClient) createThread(functionID string) threadID {
 
 func (cs *completerServiceClient) completedValue(tid threadID, value interface{}) completionID {
 	return cs.addStage(cs.protocol.completedValueReq(tid, value))
+}
+
+func (cs *completerServiceClient) thenApply(tid threadID, cid completionID, function interface{}) completionID {
+	return cs.addStage(cs.protocol.thenApplyReq(tid, cid, function))
 }
 
 func (cs *completerServiceClient) delay(tid threadID, duration time.Duration) completionID {

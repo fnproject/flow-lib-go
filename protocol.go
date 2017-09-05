@@ -3,6 +3,7 @@ package completions
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,6 +35,14 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 	return &completerProtocol{baseURL: baseURL}
 }
 
+type ContinuationRef struct {
+	Key continuationKey `json:"continuation-key"`
+}
+
+func newContinuationRef(function interface{}) *ContinuationRef {
+	return &ContinuationRef{Key: newContinuationKey(function)}
+}
+
 func (p *completerProtocol) parseThreadID(res *http.Response) threadID {
 	return threadID(res.Header.Get(ThreadIDHeader))
 }
@@ -60,6 +69,15 @@ func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *
 
 func (p *completerProtocol) delayReq(tid threadID, duration time.Duration) *http.Request {
 	return createRequest("POST", fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, tid, int64(duration)), nil)
+}
+
+func (p *completerProtocol) thenApplyReq(tid threadID, cid completionID, function interface{}) *http.Request {
+	ref := newContinuationRef(function)
+	b, err := json.Marshal(ref)
+	if err != nil {
+		panic("Failed to marshal continuation reference")
+	}
+	return createRequest("POST", fmt.Sprintf("%s/graph/%s/stage/%s/thenApply", p.baseURL, tid, cid), bytes.NewReader(b))
 }
 
 func (p *completerProtocol) getStageReq(tid threadID, cid completionID) *http.Request {

@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-var continuations = make(map[string]interface{})
+var continuations = make(map[continuationKey]interface{})
 
 func invoke(continuation interface{}, args ...interface{}) (result interface{}, err error) {
 	// catch panics and return them as errors
@@ -47,20 +47,21 @@ func invokeContinuation(continuation interface{}, args ...interface{}) []reflect
 	return v.Call(rargs)
 }
 
-func continuationKey(continuation interface{}) string {
-	rt := reflect.TypeOf(continuation)
-	return rt.String()
+type continuationKey string
+
+func newContinuationKey(function interface{}) continuationKey {
+	return continuationKey(reflect.TypeOf(function).String())
 }
 
 func RegisterContinuation(continuation interface{}) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
-	continuations[continuationKey(continuation)] = continuation
+	continuations[newContinuationKey(continuation)] = continuation
 }
 
-func invokeFromRegistry(continuationKey string, args ...interface{}) (interface{}, error) {
-	if e, ok := continuations[continuationKey]; !ok {
+func invokeFromRegistry(cKey string, args ...interface{}) (interface{}, error) {
+	if e, ok := continuations[continuationKey(cKey)]; !ok {
 		panic("Continuation not registered")
 	} else {
 		return invoke(e, args...)
