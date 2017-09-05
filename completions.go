@@ -13,10 +13,12 @@ type CloudThreadFunction func(ct CloudThread)
 func WithCloudThread(fn CloudThreadFunction) {
 	if isContinuation() {
 		b := encodeGob("done")
-		fmt.Println("Content-Type: application/x-gob")
-		fmt.Println("FnProject-DatumType: blob")
-		fmt.Println("FnProject-ResultStatus: success")
-		fmt.Printf("\n")
+		fmt.Printf("HTTP/1.1 200\r\n")
+		fmt.Printf("Content-Type: application/x-gob\r\n")
+		fmt.Printf("Content-Length: %d\r\n", b.Len())
+		fmt.Printf("FnProject-DatumType: blob\r\n")
+		fmt.Printf("FnProject-ResultStatus: success\r\n")
+		fmt.Printf("\r\n")
 		b.WriteTo(os.Stdout)
 		return
 	}
