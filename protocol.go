@@ -80,6 +80,7 @@ func (p *completerProtocol) thenApplyReq(tid threadID, cid completionID, functio
 	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/stage/%s/thenApply", p.baseURL, tid, cid), bytes.NewReader(b))
 	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
 	req.Header.Set(ContentTypeHeader, "application/json")
+	return req
 }
 
 func (p *completerProtocol) getStageReq(tid threadID, cid completionID) *http.Request {
