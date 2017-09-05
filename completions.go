@@ -31,7 +31,7 @@ func newCloudThread() *cloudThread {
 }
 
 func isContinuation() bool {
-	_, ok := lookupEnv("header_fnproject-stageid")
+	_, ok := lookupEnv("HEADER_FNPROJECT_STAGEID")
 	return ok
 }
 
@@ -39,7 +39,6 @@ func isContinuation() bool {
 func lookupEnv(key string) (string, bool) {
 	for _, e := range os.Environ() {
 		kv := strings.Split(e, "=")
-		os.Stderr.WriteString(kv[0])
 		if strings.ToLower(kv[0]) == strings.ToLower(key) {
 			return kv[1], true
 		}
