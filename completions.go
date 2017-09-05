@@ -1,7 +1,6 @@
 package completions
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -12,11 +11,10 @@ type CloudThreadFunction func(ct CloudThread)
 
 func WithCloudThread(fn CloudThreadFunction) {
 	if isContinuation() {
-		fmt.Printf("Done")
-		//b := encodeGob("done")
-		//b.WriteTo(os.Stdout)
+		b := encodeGob("done")
+		b.WriteTo(os.Stdout)
+		return
 	}
-	return
 	ct := newCloudThread()
 	defer ct.commit()
 	fn(ct)
@@ -41,7 +39,7 @@ func isContinuation() bool {
 func lookupEnv(key string) (string, bool) {
 	for _, e := range os.Environ() {
 		kv := strings.Split(e, "=")
-		fmt.Printf("%s %s\n", kv[0], kv[1])
+		os.Stderr.WriteString(kv[0])
 		if strings.ToLower(kv[0]) == strings.ToLower(key) {
 			return kv[1], true
 		}
