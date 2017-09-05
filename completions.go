@@ -41,6 +41,7 @@ func isContinuation() bool {
 func lookupEnv(key string) (string, bool) {
 	for _, e := range os.Environ() {
 		kv := strings.Split(e, "=")
+		fmt.Printf("%s %s\n", kv[0], kv[1])
 		if strings.ToLower(kv[0]) == strings.ToLower(key) {
 			return kv[1], true
 		}
