@@ -77,7 +77,9 @@ func (p *completerProtocol) thenApplyReq(tid threadID, cid completionID, functio
 	if err != nil {
 		panic("Failed to marshal continuation reference")
 	}
-	return createRequest("POST", fmt.Sprintf("%s/graph/%s/stage/%s/thenApply", p.baseURL, tid, cid), bytes.NewReader(b))
+	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/stage/%s/thenApply", p.baseURL, tid, cid), bytes.NewReader(b))
+	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+	req.Header.Set(ContentTypeHeader, "application/json")
 }
 
 func (p *completerProtocol) getStageReq(tid threadID, cid completionID) *http.Request {
