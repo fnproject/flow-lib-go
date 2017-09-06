@@ -30,7 +30,7 @@ func newCloudThread(codec codec) *cloudThread {
 // case insensitive lookup
 func lookupEnv(key string) (string, bool) {
 	for _, e := range os.Environ() {
-		kv := strings.Split(e, "=")
+		kv := strings.SplitN(e, "=", 2)
 		if strings.ToLower(kv[0]) == strings.ToLower(key) {
 			return kv[1], true
 		}
