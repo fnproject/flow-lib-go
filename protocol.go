@@ -7,16 +7,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"reflect"
 	"time"
 )
 
 const (
 	// protocol headers
-	HeaderPrefix    = "FnProject-"
-	DatumTypeHeader = HeaderPrefix + "Datumtype"
-	ThreadIDHeader  = HeaderPrefix + "ThreadID"
-	StageIDHeader   = HeaderPrefix + "StageID"
+	HeaderPrefix       = "FnProject-"
+	DatumTypeHeader    = HeaderPrefix + "Datumtype"
+	ThreadIDHeader     = HeaderPrefix + "ThreadID"
+	StageIDHeader      = HeaderPrefix + "StageID"
+	ResultStatusHeader = HeaderPrefix + "ResultStatus"
+
+	SuccessHeaderValue = "success"
+	FailureHeaderValue = "failure"
 
 	BlobDatumHeader = "blob"
 
@@ -35,12 +40,12 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 	return &completerProtocol{baseURL: baseURL}
 }
 
-type ContinuationRef struct {
+type continuationRef struct {
 	Key continuationKey `json:"continuation-key"`
 }
 
-func newContinuationRef(function interface{}) *ContinuationRef {
-	return &ContinuationRef{Key: newContinuationKey(function)}
+func newContinuationRef(function interface{}) *continuationRef {
+	return &continuationRef{Key: newContinuationKey(function)}
 }
 
 func (p *completerProtocol) parseThreadID(res *http.Response) threadID {
@@ -151,7 +156,29 @@ func decodeContinuationArgs(continuation interface{}, inputs ...io.Reader) (resu
 		panic("Invalid number of arguments decoded for continuation")
 	}
 	for i, input := range inputs {
+		// TODO depending on the header decode as gob
 		results[i] = decodeTypedGob(input, argTypes[i])
 	}
 	return
+}
+
+func writeContinuationResponse(result interface{}, err error) {
+	fmt.Printf("HTTP/1.1 200\r\n")
+	fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
+
+	var buf *bytes.Buffer
+	var status string
+	if err != nil {
+		buf = encodeGob(err)
+		status = FailureHeaderValue
+	} else {
+		buf = encodeGob(result)
+		status = SuccessHeaderValue
+	}
+	fmt.Printf("Content-Length: %d\r\n", buf.Len())
+	fmt.Printf("%s: blob\r\n", DatumTypeHeader)
+	fmt.Printf("%s: %s\r\n", ResultStatusHeader, status)
+	fmt.Printf("\r\n")
+
+	buf.WriteTo(os.Stdout)
 }

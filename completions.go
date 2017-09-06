@@ -1,45 +1,30 @@
 package completions
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 )
 
-type CloudThreadFunction func(ct CloudThread)
-
-func WithCloudThread(fn CloudThreadFunction) {
-	if isContinuation() {
-		b := encodeGob("done")
-		fmt.Printf("HTTP/1.1 200\r\n")
-		fmt.Printf("Content-Type: application/x-gob\r\n")
-		fmt.Printf("Content-Length: %d\r\n", b.Len())
-		fmt.Printf("FnProject-DatumType: blob\r\n")
-		fmt.Printf("FnProject-ResultStatus: success\r\n")
-		fmt.Printf("\r\n")
-		b.WriteTo(os.Stdout)
+func WithCloudThread(fn func(ct CloudThread)) {
+	codec := newCodec()
+	if codec.isContinuation() {
+		handleContinuation(codec)
 		return
 	}
-	ct := newCloudThread()
+	ct := newCloudThread(codec)
 	defer ct.commit()
 	fn(ct)
 }
 
-func newCloudThread() *cloudThread {
+func newCloudThread(codec codec) *cloudThread {
 	completer := newCompleterClient()
-	codec := newCodec()
 	return &cloudThread{
 		completer: completer,
 		threadID:  completer.createThread(getFunctionID(codec)),
 		codec:     codec,
 	}
-}
-
-func isContinuation() bool {
-	_, ok := lookupEnv("HEADER_FNPROJECT_STAGEID")
-	return ok
 }
 
 // case insensitive lookup

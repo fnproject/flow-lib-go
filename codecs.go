@@ -4,9 +4,17 @@ import (
 	"strings"
 )
 
+const (
+	formatEnv  = "FN_FORMAT"
+	appNameEnv = "APP_NAME"
+	routeEnv   = "ROUTE"
+)
+
 type codec interface {
 	getAppName() string
 	getRoute() string
+	isContinuation() bool
+	getHeader(string) string
 }
 
 type defaultCodec struct {
@@ -15,12 +23,12 @@ type defaultCodec struct {
 }
 
 func newCodec() codec {
-	if format, ok := lookupEnv("FN_FORMAT"); ok && strings.ToLower(format) == "http" {
+	if format, ok := lookupEnv(formatEnv); ok && strings.ToLower(format) == "http" {
 		panic("Hot functions not supported!")
 	}
 	return &defaultCodec{
-		appName: lookupReqEnv("APP_NAME"),
-		route:   lookupReqEnv("ROUTE"),
+		appName: lookupReqEnv(appNameEnv),
+		route:   lookupReqEnv(routeEnv),
 	}
 }
 
@@ -30,6 +38,17 @@ func (c *defaultCodec) getAppName() string {
 
 func (c *defaultCodec) getRoute() string {
 	return c.route
+}
+
+func (c *defaultCodec) isContinuation() bool {
+	_, ok := c.getHeader(StageIDHeader)
+	return ok
+}
+
+func (c *defaultCodec) getHeader(header string) (string, bool) {
+	header = strings.Replace(header, "-", "_", -1)
+	header = "HEADER_" + header
+	return lookupEnv(strings.ToUpper(header))
 }
 
 func getFunctionID(c codec) string {
