@@ -14,7 +14,7 @@ type codec interface {
 	getAppName() string
 	getRoute() string
 	isContinuation() bool
-	getHeader(string) string
+	getHeader(string) (string, bool)
 }
 
 type defaultCodec struct {

@@ -75,7 +75,11 @@ func invokeFromRegistry(cKey string, args ...interface{}) (interface{}, error) {
 }
 
 func handleContinuation(codec codec) {
-	mediaType, params, err := mime.ParseMediaType(codec.getHeader(ContentTypeHeader))
+	cType, ok := codec.getHeader(ContentTypeHeader)
+	if !ok {
+		panic("Missing content type header")
+	}
+	mediaType, params, err := mime.ParseMediaType(cType)
 	if err != nil {
 		panic("Failed to get content type for continuation")
 	}
@@ -115,6 +119,6 @@ func handleContinuation(codec codec) {
 		bodies = append(bodies, parts[i])
 	}
 	args := decodeContinuationArgs(function, bodies...)
-	result, error := invoke(ref.Key, args)
+	result, err := invoke(ref.Key, args)
 	writeContinuationResponse(result, err)
 }
