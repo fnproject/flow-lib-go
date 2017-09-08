@@ -124,12 +124,20 @@ func decodeGob(r io.Reader, val interface{}) {
 
 func decodeTypedGob(r io.Reader, t reflect.Type) interface{} {
 	dec := gob.NewDecoder(r)
-	v := reflect.New(t)
-	ref := v.Interface()
-	if err := dec.Decode(ref); err != nil {
+	var v reflect.Value
+	if t.Kind() == reflect.Ptr {
+		v = reflect.New(t.Elem())
+	} else {
+		v = reflect.New(t)
+	}
+	if err := dec.Decode(v.Interface()); err != nil {
 		panic("Failed to decode gob: " + err.Error())
 	}
-	return ref
+
+	if t.Kind() == reflect.Ptr {
+		return v.Interface()
+	}
+	return v.Elem().Interface()
 }
 
 func continuationArgTypes(continuation interface{}) (argTypes []reflect.Type) {
@@ -178,9 +186,12 @@ func writeContinuationResponse(result interface{}, err error) {
 	var buf *bytes.Buffer
 	var status string
 	if err != nil {
-		buf = encodeGob(err)
+		os.Stderr.WriteString("Encoding error " + err.Error())
+		errMsg := err.Error()
+		buf = encodeGob(&errMsg)
 		status = FailureHeaderValue
 	} else {
+		os.Stderr.WriteString(fmt.Sprintf("Encoding result %v", result))
 		buf = encodeGob(result)
 		status = SuccessHeaderValue
 	}

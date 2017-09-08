@@ -15,10 +15,9 @@ func TestEncodeAndDecodeGob(t *testing.T) {
 }
 
 func TestEncodeAndDecodeGobInterface(t *testing.T) {
-	v := 25
-	buf := encodeGob(&v)
-	result := decodeTypedGob(buf, reflect.TypeOf(v))
-	assert.Equal(t, &v, result)
+	buf := encodeGob(25)
+	result := decodeTypedGob(buf, reflect.TypeOf(25))
+	assert.Equal(t, 25, result)
 }
 
 func TestContinuationTypesOneArg(t *testing.T) {
@@ -41,27 +40,21 @@ func TestContinuationTypesExceedsArgs(t *testing.T) {
 }
 
 func TestDecodeContinuationArgsWithOne(t *testing.T) {
-	stringArg := "foo"
-	//bufs := []*bytes.Buffer{encodeGob(&stringArg)}
-	args := decodeContinuationArgs(withOneArg, encodeGob(&stringArg))
+	args := decodeContinuationArgs(withOneArg, encodeGob("foo"))
 	assert.Equal(t, 1, len(args))
-	assert.IsType(t, &stringArg, args[0])
+	assert.Equal(t, "foo", args[0])
 }
 
 func TestDecodeContinuationArgsWithTwo(t *testing.T) {
-	stringArg := "foo"
-	intArg := 25
-	args := decodeContinuationArgs(withTwoArgs, encodeGob(&stringArg), encodeGob(&intArg))
+	args := decodeContinuationArgs(withTwoArgs, encodeGob("foo"), encodeGob(25))
 	assert.Equal(t, 2, len(args))
-	assert.IsType(t, &stringArg, args[0])
-	assert.IsType(t, &intArg, args[1])
+	assert.Equal(t, "foo", args[0])
+	assert.IsType(t, 25, args[1])
 }
 
 func TestDecodeContinuationArgsThatFails(t *testing.T) {
-	stringArg := "foo"
-	intArg := 25
 	assert.Panics(t, func() {
-		decodeContinuationArgs(withOneArg, encodeGob(&stringArg), encodeGob(&intArg))
+		decodeContinuationArgs(withOneArg, encodeGob("foo"), encodeGob(25))
 	})
 }
 

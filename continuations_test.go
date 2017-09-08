@@ -54,6 +54,43 @@ func TestContinuationWithError(t *testing.T) {
 	assert.Empty(t, result)
 }
 
+func TestInvoke(t *testing.T) {
+	r, _ := invoke(strings.ToUpper, "foo")
+	assert.Equal(t, "FOO", r)
+}
+
+func TestDecodeArgString(t *testing.T) {
+	r := decodeArg(strings.ToUpper, 0, encodeGob("foo"))
+	assert.Equal(t, "foo", r)
+	result, err := invoke(strings.ToUpper, r)
+	assert.Equal(t, "FOO", result)
+	assert.Nil(t, err)
+}
+
+type foo struct {
+	Name string
+}
+
+func testFoo(f *foo) *foo {
+	f.Name = strings.ToUpper(f.Name)
+	return f
+}
+
+func TestDecodeArgWithStruct(t *testing.T) {
+	r := decodeArg(testFoo, 0, encodeGob(&foo{Name: "foo"}))
+	assert.Equal(t, "foo", r.(*foo).Name)
+	result, err := invoke(testFoo, r)
+	assert.Equal(t, "FOO", result.(*foo).Name)
+	assert.Nil(t, err)
+}
+
+func TestEncodeDecodeGob(t *testing.T) {
+	e := encodeGob("foo")
+	var d string
+	decodeGob(e, &d)
+	assert.Equal(t, "foo", d)
+}
+
 func toUpperString(arg0 string) string {
 	return strings.ToUpper(arg0)
 }
