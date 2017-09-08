@@ -83,42 +83,42 @@ func handleContinuation(codec codec) {
 	if err != nil {
 		panic("Failed to get content type for continuation")
 	}
-	var parts []*multipart.Part
+	var decoded []interface{}
 	if strings.HasPrefix(mediaType, "multipart/") {
 		mr := multipart.NewReader(os.Stdin, params["boundary"])
 		for {
 			p, err := mr.NextPart()
-			if err == io.EOF {
-				return
-			}
 			if err != nil {
-				panic("Failed to parse multipart continuation")
+				break
 			}
-			parts = append(parts, p)
-			//slurp, err := ioutil.ReadAll(p)
+			var val interface{}
+			if len(decoded) == 0 {
+				os.Stderr.WriteString("Unmarshalling continuation")
+				val = decodeContinuation(p)
+			} else {
+				os.Stderr.WriteString(fmt.Sprintf("Unmarshalling arg %d\n", len(decoded)))
+				val = decodeArg(decoded[0], len(decoded), p)
+			}
+			decoded = append(decoded, val)
 		}
 	}
 
-	if len(parts) < 1 {
+	if len(decoded) < 1 {
 		panic("Invalid multipart continuation")
 	}
 
-	//slurp, err := ioutil.ReadAll(parts[0])
+	result, err := invoke(decoded[0], decoded[1:]...)
+	writeContinuationResponse(result, err)
+}
+
+func decodeContinuation(reader io.Reader) interface{} {
 	var ref continuationRef
-	if err := json.NewDecoder(parts[0]).Decode(&ref); err != nil {
+	if err := json.NewDecoder(reader).Decode(&ref); err != nil {
 		panic("Failed to decode continuation")
 	}
-
 	function, valid := continuations[ref.Key]
 	if !valid {
 		panic("Continuation not registered")
 	}
-
-	var bodies []io.Reader
-	for i := 1; i < len(parts); i++ {
-		bodies = append(bodies, parts[i])
-	}
-	args := decodeContinuationArgs(function, bodies...)
-	result, err := invoke(ref.Key, args)
-	writeContinuationResponse(result, err)
+	return function
 }
