@@ -97,7 +97,7 @@ func handleContinuation(codec codec) {
 				val = decodeContinuation(p)
 			} else {
 				os.Stderr.WriteString(fmt.Sprintf("Unmarshalling arg %d\n", len(decoded)))
-				val = decodeArg(decoded[0], len(decoded), p)
+				val = decodeArg(decoded[0], len(decoded)-1, p)
 			}
 			decoded = append(decoded, val)
 		}
