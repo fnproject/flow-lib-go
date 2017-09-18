@@ -92,8 +92,8 @@ func TestEncodeDecodeGob(t *testing.T) {
 }
 
 func TestContinuationKeyIsConstant(t *testing.T) {
-	k1 := newContinuationKey(TestContinuationKeyIsConstant)
-	k2 := newContinuationKey(TestContinuationKeyIsConstant)
+	k1 := continuationKey(TestContinuationKeyIsConstant)
+	k2 := continuationKey(TestContinuationKeyIsConstant)
 	assert.Equal(t, k1, k2)
 }
 

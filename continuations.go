@@ -8,13 +8,13 @@ import (
 	"mime/multipart"
 	"os"
 	"reflect"
-	"strconv"
+	"runtime"
 	"strings"
 	"sync"
 )
 
-var cMutex = &sync.Mutex{} // guards access to continuations
-var continuations = make(map[continuationKey]interface{})
+var cMutex = &sync.Mutex{} // guards access to cFunctions
+var cFunctions = make(map[cKey]interface{})
 
 func invoke(continuation interface{}, args ...interface{}) (result interface{}, err error) {
 	// catch panics and return them as errors
@@ -56,28 +56,25 @@ func invokeContinuation(continuation interface{}, args ...interface{}) []reflect
 	return v.Call(rargs)
 }
 
-type continuationKey string
+type cKey string
 
-func newContinuationKey(function interface{}) continuationKey {
-	cMutex.Lock()
-	cMutex.Unlock()
-	return continuationKey(strconv.Itoa(len(continuations)))
+func continuationKey(c interface{}) cKey {
+	return cKey(runtime.FuncForPC(reflect.ValueOf(c).Pointer()).Name())
 }
 
-func RegisterContinuation(continuation interface{}) {
-	if reflect.TypeOf(continuation).Kind() != reflect.Func {
+func RegisterContinuation(function interface{}) {
+	if reflect.TypeOf(function).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
-	key := newContinuationKey(continuation)
 	cMutex.Lock()
 	defer cMutex.Unlock()
-	continuations[key] = continuation
+	cFunctions[continuationKey(function)] = function
 }
 
-func invokeFromRegistry(cKey string, args ...interface{}) (interface{}, error) {
+func invokeFromRegistry(key string, args ...interface{}) (interface{}, error) {
 	cMutex.Lock()
 	defer cMutex.Unlock()
-	if e, ok := continuations[continuationKey(cKey)]; !ok {
+	if e, ok := cFunctions[cKey(key)]; !ok {
 		panic("Continuation not registered")
 	} else {
 		return invoke(e, args...)
@@ -128,7 +125,7 @@ func decodeContinuation(reader io.Reader) interface{} {
 	}
 	cMutex.Lock()
 	defer cMutex.Unlock()
-	function, valid := continuations[ref.Key]
+	function, valid := cFunctions[ref.Key]
 	if !valid {
 		panic("Continuation not registered")
 	}

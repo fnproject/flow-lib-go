@@ -41,11 +41,11 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 }
 
 type continuationRef struct {
-	Key continuationKey `json:"continuation-key"`
+	Key cKey `json:"continuation-key"`
 }
 
 func newContinuationRef(function interface{}) *continuationRef {
-	return &continuationRef{Key: newContinuationKey(function)}
+	return &continuationRef{Key: continuationKey(function)}
 }
 
 func (p *completerProtocol) parseThreadID(res *http.Response) threadID {
