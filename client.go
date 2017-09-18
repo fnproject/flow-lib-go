@@ -3,6 +3,7 @@ package completions
 import (
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 )
 
@@ -25,7 +26,7 @@ type completerClient interface {
 	createThread(functionID string) threadID
 	completedValue(tid threadID, value interface{}) completionID
 	delay(tid threadID, duration time.Duration) completionID
-	getAsync(tid threadID, cid completionID, val interface{}) chan interface{}
+	getAsync(tid threadID, cid completionID, ch chan interface{})
 	commit(tid threadID)
 	thenApply(tid threadID, cid completionID, function interface{}) completionID
 }
@@ -51,21 +52,19 @@ func (cs *completerServiceClient) delay(tid threadID, duration time.Duration) co
 	return cs.addStage(cs.protocol.delayReq(tid, duration))
 }
 
-func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val interface{}) chan interface{} {
-	ch := make(chan interface{})
-	go cs.get(tid, cid, val, ch)
-	return ch
+func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, ch chan interface{}) {
+	go cs.get(tid, cid, ch)
 }
 
-func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan interface{}) {
+func (cs *completerServiceClient) get(tid threadID, cid completionID, ch chan interface{}) {
 	req := cs.protocol.getStageReq(tid, cid)
 	res, err := hc.Do(req)
 	if err != nil {
 		panic("Failed request: " + err.Error())
 	}
 	defer res.Body.Close()
-	decodeGob(res.Body, val)
-	ch <- val
+	cType := reflect.TypeOf(ch).Elem()
+	ch <- decodeTypedGob(res.Body, cType)
 }
 
 func (cs *completerServiceClient) commit(tid threadID) {
