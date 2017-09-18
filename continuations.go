@@ -68,9 +68,10 @@ func RegisterContinuation(continuation interface{}) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
+	key := newContinuationKey(continuation)
 	cMutex.Lock()
 	defer cMutex.Unlock()
-	continuations[newContinuationKey(continuation)] = continuation
+	continuations[key] = continuation
 }
 
 func invokeFromRegistry(cKey string, args ...interface{}) (interface{}, error) {
