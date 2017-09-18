@@ -15,10 +15,10 @@ var debugLog = false
 func Debug(withDebug bool) {
 	debugMutex.Lock()
 	defer debugMutex.Unlock()
-	if withDebug {
+	debugLog = withDebug
+	if debugLog {
 		log("Enabled debugging")
 	}
-	debugLog = withDebug
 }
 
 func log(msg string) {

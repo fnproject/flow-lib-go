@@ -97,6 +97,11 @@ func TestContinuationKeyIsConstant(t *testing.T) {
 	assert.Equal(t, k1, k2)
 }
 
+func TestDebugPrints(t *testing.T) {
+	Debug(true)
+	log("foo")
+}
+
 func toUpperString(arg0 string) string {
 	return strings.ToUpper(arg0)
 }
