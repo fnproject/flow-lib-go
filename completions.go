@@ -70,7 +70,7 @@ type CloudThread interface {
 }
 
 type CloudFuture interface {
-	Get(ch chan interface{})
+	Get(result interface{}) chan interface{}
 	ThenApply(fn interface{}) CloudFuture
 	//ThenCompose(fn interface{}) CloudFuture
 	//ThenCombine(fn interface{}) CloudFuture
@@ -117,8 +117,8 @@ func (ct *cloudThread) newCloudFuture(cid completionID) CloudFuture {
 	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
-func (cf *cloudFuture) Get(ch chan interface{}) {
-	cf.completer.getAsync(cf.threadID, cf.completionID, ch)
+func (cf *cloudFuture) Get(result interface{}) chan interface{} {
+	return cf.completer.getAsync(cf.threadID, cf.completionID, result)
 }
 
 func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
