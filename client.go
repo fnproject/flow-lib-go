@@ -25,7 +25,7 @@ type completerClient interface {
 	createThread(functionID string) threadID
 	completedValue(tid threadID, value interface{}) completionID
 	delay(tid threadID, duration time.Duration) completionID
-	get(tid threadID, cid completionID, val interface{})
+	getAsync(tid threadID, cid completionID, val interface{}) chan interface{}
 	commit(tid threadID)
 	thenApply(tid threadID, cid completionID, function interface{}) completionID
 }
@@ -51,7 +51,13 @@ func (cs *completerServiceClient) delay(tid threadID, duration time.Duration) co
 	return cs.addStage(cs.protocol.delayReq(tid, duration))
 }
 
-func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}) {
+func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val interface{}) chan interface{} {
+	ch := make(chan interface{})
+	go cs.get(tid, cid, val, ch)
+	return ch
+}
+
+func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan interface{}) {
 	req := cs.protocol.getStageReq(tid, cid)
 	res, err := hc.Do(req)
 	if err != nil {
@@ -59,6 +65,7 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	}
 	defer res.Body.Close()
 	decodeGob(res.Body, val)
+	ch <- val
 }
 
 func (cs *completerServiceClient) commit(tid threadID) {
