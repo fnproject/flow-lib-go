@@ -1,11 +1,31 @@
 package completions
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
+
+var debugMutex = &sync.Mutex{}
+var debugLog = false
+
+func Debug(withDebug bool) {
+	debugMutex.Lock()
+	defer debugMutex.Unlock()
+	if withDebug {
+		log("Enabled debugging")
+	}
+	debugLog = withDebug
+}
+
+func log(msg string) {
+	if debugLog {
+		os.Stderr.WriteString(fmt.Sprintln(msg))
+	}
+}
 
 func WithCloudThread(fn func(ct CloudThread)) {
 	codec := newCodec()

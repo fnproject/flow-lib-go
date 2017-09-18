@@ -8,9 +8,12 @@ import (
 	"mime/multipart"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
+	"sync"
 )
 
+var cMutex = &sync.Mutex{} // guards access to continuations
 var continuations = make(map[continuationKey]interface{})
 
 func invoke(continuation interface{}, args ...interface{}) (result interface{}, err error) {
@@ -56,17 +59,23 @@ func invokeContinuation(continuation interface{}, args ...interface{}) []reflect
 type continuationKey string
 
 func newContinuationKey(function interface{}) continuationKey {
-	return continuationKey(reflect.TypeOf(function).String())
+	cMutex.Lock()
+	cMutex.Unlock()
+	return continuationKey(strconv.Itoa(len(continuations)))
 }
 
 func RegisterContinuation(continuation interface{}) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
+	cMutex.Lock()
+	defer cMutex.Unlock()
 	continuations[newContinuationKey(continuation)] = continuation
 }
 
 func invokeFromRegistry(cKey string, args ...interface{}) (interface{}, error) {
+	cMutex.Lock()
+	defer cMutex.Unlock()
 	if e, ok := continuations[continuationKey(cKey)]; !ok {
 		panic("Continuation not registered")
 	} else {
@@ -93,10 +102,10 @@ func handleContinuation(codec codec) {
 			}
 			var val interface{}
 			if len(decoded) == 0 {
-				os.Stderr.WriteString("Unmarshalling continuation")
+				log("Unmarshalling continuation")
 				val = decodeContinuation(p)
 			} else {
-				os.Stderr.WriteString(fmt.Sprintf("Unmarshalling arg %d\n", len(decoded)))
+				log(fmt.Sprintf("Unmarshalling arg %d", len(decoded)))
 				val = decodeArg(decoded[0], len(decoded)-1, p)
 			}
 			decoded = append(decoded, val)
@@ -116,6 +125,8 @@ func decodeContinuation(reader io.Reader) interface{} {
 	if err := json.NewDecoder(reader).Decode(&ref); err != nil {
 		panic("Failed to decode continuation")
 	}
+	cMutex.Lock()
+	defer cMutex.Unlock()
 	function, valid := continuations[ref.Key]
 	if !valid {
 		panic("Continuation not registered")

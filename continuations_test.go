@@ -91,6 +91,12 @@ func TestEncodeDecodeGob(t *testing.T) {
 	assert.Equal(t, "foo", d)
 }
 
+func TestContinuationKeyIsConstant(t *testing.T) {
+	k1 := newContinuationKey(TestContinuationKeyIsConstant)
+	k2 := newContinuationKey(TestContinuationKeyIsConstant)
+	assert.Equal(t, k1, k2)
+}
+
 func toUpperString(arg0 string) string {
 	return strings.ToUpper(arg0)
 }
