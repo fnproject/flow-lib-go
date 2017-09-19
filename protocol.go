@@ -15,7 +15,7 @@ const (
 	// protocol headers
 	HeaderPrefix       = "FnProject-"
 	DatumTypeHeader    = HeaderPrefix + "Datumtype"
-	ThreadIDHeader     = HeaderPrefix + "ThreadID"
+	ThreadIDHeader     = HeaderPrefix + "FlowID"
 	StageIDHeader      = HeaderPrefix + "StageID"
 	ResultStatusHeader = HeaderPrefix + "ResultStatus"
 	CodeLocationHeader = HeaderPrefix + "Codeloc"
