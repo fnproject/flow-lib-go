@@ -1,6 +1,7 @@
 package completions
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,7 +28,7 @@ type completionID string
 type completerClient interface {
 	createThread(fid string) threadID
 	commit(tid threadID)
-	getAsync(tid threadID, cid completionID, val interface{}) chan interface{}
+	getAsync(tid threadID, cid completionID, val interface{}) chan *FutureResult
 	completedValue(tid threadID, value interface{}, loc *codeLoc) completionID
 	failedFuture(tid threadID, err error, loc *codeLoc) completionID
 	delay(tid threadID, duration time.Duration, loc *codeLoc) completionID
@@ -165,21 +166,30 @@ func (cs *completerServiceClient) delay(tid threadID, duration time.Duration, lo
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 
-func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val interface{}) chan interface{} {
-	ch := make(chan interface{})
+func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val interface{}) chan *FutureResult {
+	ch := make(chan *FutureResult)
 	go cs.get(tid, cid, val, ch)
 	return ch
 }
 
-func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan interface{}) {
+func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan *FutureResult) {
 	req := cs.protocol.getStageReq(tid, cid)
 	res, err := hc.Do(req)
 	if err != nil {
 		panic("Failed request: " + err.Error())
 	}
 	defer res.Body.Close()
-	decodeGob(res.Body, val)
-	ch <- val
+
+	result := &FutureResult{}
+	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
+		var msg string
+		decodeGob(res.Body, msg)
+		result.Err = errors.New(msg)
+	} else {
+		decodeGob(res.Body, val)
+		result.Value = val
+	}
+	ch <- result
 }
 
 func (cs *completerServiceClient) commit(tid threadID) {
