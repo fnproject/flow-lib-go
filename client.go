@@ -29,6 +29,7 @@ type completerClient interface {
 	commit(tid threadID)
 	getAsync(tid threadID, cid completionID, val interface{}) chan interface{}
 	completedValue(tid threadID, value interface{}, loc *codeLoc) completionID
+	failedFuture(tid threadID, err error, loc *codeLoc) completionID
 	delay(tid threadID, duration time.Duration, loc *codeLoc) completionID
 	supply(tid threadID, fn interface{}, loc *codeLoc) completionID
 	thenApply(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
@@ -61,7 +62,11 @@ func (cs *completerServiceClient) createThread(fid string) threadID {
 }
 
 func (cs *completerServiceClient) completedValue(tid threadID, value interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.completedValueReq(tid, value))
+	return cs.addStage(cs.protocol.gobValueReq(tid, true, value))
+}
+
+func (cs *completerServiceClient) failedFuture(tid threadID, err error, loc *codeLoc) completionID {
+	return cs.addStage(cs.protocol.gobValueReq(tid, false, err))
 }
 
 func (cs *completerServiceClient) supply(tid threadID, fn interface{}, loc *codeLoc) completionID {

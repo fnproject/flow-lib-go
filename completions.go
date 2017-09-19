@@ -62,28 +62,30 @@ func lookupEnv(key string) (string, bool) {
 type CloudThread interface {
 	// InvokeFunction(functionID string, method HTTPMethod, headers Headers, data byte[]) CloudFuture
 	// InvokeFunction(functionID string, method HTTPMethod, headers Headers) CloudFuture
-	//Supply(fn interface{}) CloudFuture
+	// InvokeFunction(functionID string, method HTTPMethod) CloudFuture
+	Supply(function interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
 	CompletedValue(value interface{}) CloudFuture
-	//CreateExternalFuture() ExternalCloudFuture
-	//AllOf(futures ...CloudFuture) CloudFuture
-	//AnyOf(futures ...CloudFuture) CloudFuture
+	FailedFuture(err error) CloudFuture
+	CreateExternalFuture() ExternalCloudFuture
+	AllOf(futures ...CloudFuture) CloudFuture
+	AnyOf(futures ...CloudFuture) CloudFuture
 }
 
 type CloudFuture interface {
 	Get(result interface{}) chan interface{}
-	ThenApply(fn interface{}) CloudFuture
-	//ThenCompose(fn interface{}) CloudFuture
-	//ThenCombine(fn interface{}) CloudFuture
-	//WhenComplete(fn interface{}) CloudFuture
-	//ThenAccept(fn interface{}) CloudFuture
-	//AcceptEither(fn interface{}) CloudFuture
-	//ApplyToEither(fn interface{}) CloudFuture
-	//ThenAcceptBoth(fn interface{}) CloudFuture
-	//ThenRun(fn interface{}) CloudFuture
-	//Handle(fn interface{}) CloudFuture
-	//Exceptionally(fn interface{}) CloudFuture
-	CreateExternalFuture() ExternalCloudFuture
+	ThenApply(function interface{}) CloudFuture
+	ThenCompose(function interface{}) CloudFuture
+	ThenCombine(other CloudFuture, function interface{}) CloudFuture
+	WhenComplete(function interface{}) CloudFuture
+	ThenAccept(function interface{}) CloudFuture
+	AcceptEither(other CloudFuture, function interface{}) CloudFuture
+	ApplyToEither(other CloudFuture, function interface{}) CloudFuture
+	ThenAcceptBoth(other CloudFuture, function interface{}) CloudFuture
+	ThenRun(function interface{}) CloudFuture
+	Handle(function interface{}) CloudFuture
+	Exceptionally(function interface{}) CloudFuture
+	ExceptionallyCompose(function interface{}) CloudFuture
 }
 
 type ExternalCloudFuture interface {
@@ -130,8 +132,8 @@ func (ct *cloudThread) commit() {
 	ct.completer.commit(ct.threadID)
 }
 
-func (cf *cloudFuture) Get(result interface{}) chan interface{} {
-	return cf.completer.getAsync(cf.threadID, cf.completionID, result)
+func (ct *cloudThread) Supply(function interface{}) CloudFuture {
+	return ct.newCloudFuture(ct.completer.supply(ct.threadID, function, newCodeLoc()))
 }
 
 func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
@@ -142,9 +144,8 @@ func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
 	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()))
 }
 
-func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
-	cid := cf.completer.thenApply(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+func (ct *cloudThread) FailedFuture(err error) CloudFuture {
+	return ct.newCloudFuture(ct.completer.failedFuture(ct.threadID, err, newCodeLoc()))
 }
 
 type externalCloudFuture struct {
@@ -161,11 +162,92 @@ func (ex *externalCloudFuture) FailURL() *url.URL {
 	return ex.failURL
 }
 
-func (cf *cloudFuture) CreateExternalFuture() ExternalCloudFuture {
-	ec := cf.completer.createExternalCompletion(cf.threadID, newCodeLoc())
+func (ct *cloudThread) CreateExternalFuture() ExternalCloudFuture {
+	ec := ct.completer.createExternalCompletion(ct.threadID, newCodeLoc())
 	return &externalCloudFuture{
-		cloudFuture:   cloudFuture{cloudThread: cf.cloudThread, completionID: ec.cid},
+		cloudFuture:   cloudFuture{cloudThread: ct, completionID: ec.cid},
 		completionURL: ec.completionURL,
 		failURL:       ec.failURL,
 	}
+}
+
+func futureCids(futures ...CloudFuture) []completionID {
+	var cids []completionID
+	for _, f := range futures {
+		cf := f.(*cloudFuture)
+		cids = append(cids, cf.completionID)
+	}
+	return cids
+}
+
+func (ct *cloudThread) AllOf(futures ...CloudFuture) CloudFuture {
+	return ct.newCloudFuture(ct.completer.allOf(ct.threadID, futureCids(futures...), newCodeLoc()))
+}
+
+func (ct *cloudThread) AnyOf(futures ...CloudFuture) CloudFuture {
+	return ct.newCloudFuture(ct.completer.anyOf(ct.threadID, futureCids(futures...), newCodeLoc()))
+}
+
+func (cf *cloudFuture) Get(result interface{}) chan interface{} {
+	return cf.completer.getAsync(cf.threadID, cf.completionID, result)
+}
+
+func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
+	cid := cf.completer.thenApply(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ThenCompose(function interface{}) CloudFuture {
+	cid := cf.completer.thenCompose(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ThenCombine(other CloudFuture, function interface{}) CloudFuture {
+	cid := cf.completer.thenCombine(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) WhenComplete(function interface{}) CloudFuture {
+	cid := cf.completer.whenComplete(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ThenAccept(function interface{}) CloudFuture {
+	cid := cf.completer.thenAccept(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) AcceptEither(other CloudFuture, function interface{}) CloudFuture {
+	cid := cf.completer.acceptEither(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ApplyToEither(other CloudFuture, function interface{}) CloudFuture {
+	cid := cf.completer.applyToEither(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ThenAcceptBoth(other CloudFuture, function interface{}) CloudFuture {
+	cid := cf.completer.thenAcceptBoth(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ThenRun(function interface{}) CloudFuture {
+	cid := cf.completer.thenRun(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) Handle(function interface{}) CloudFuture {
+	cid := cf.completer.handle(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) Exceptionally(function interface{}) CloudFuture {
+	cid := cf.completer.exceptionally(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+}
+
+func (cf *cloudFuture) ExceptionallyCompose(function interface{}) CloudFuture {
+	cid := cf.completer.exceptionallyCompose(cf.threadID, cf.completionID, function, newCodeLoc())
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
 }

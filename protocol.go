@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"time"
 )
 
 const (
@@ -71,15 +70,17 @@ func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 	return req
 }
 
-func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *http.Request {
-	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/completedValue", p.baseURL, tid), encodeGob(value))
+func (p *completerProtocol) gobValueReq(tid threadID, success bool, value interface{}) *http.Request {
+	URL := p.rootStageURL("completedValue", tid)
+	req := createRequest("POST", URL, encodeGob(value))
 	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
 	req.Header.Set(ContentTypeHeader, GobMediaHeader)
+	if success {
+		req.Header.Set(ResultStatusHeader, SuccessHeaderValue)
+	} else {
+		req.Header.Set(ResultStatusHeader, FailureHeaderValue)
+	}
 	return req
-}
-
-func (p *completerProtocol) delayReq(tid threadID, duration time.Duration) *http.Request {
-	return createRequest("POST", fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, tid, int64(duration)), nil)
 }
 
 func (p *completerProtocol) rootStageURL(op string, tid threadID) string {
