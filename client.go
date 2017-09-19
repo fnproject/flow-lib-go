@@ -66,7 +66,7 @@ func (cs *completerServiceClient) completedValue(tid threadID, value interface{}
 }
 
 func (cs *completerServiceClient) failedFuture(tid threadID, err error, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.gobValueReq(tid, false, err))
+	return cs.addStage(cs.protocol.gobValueReq(tid, false, err.Error()))
 }
 
 func (cs *completerServiceClient) supply(tid threadID, fn interface{}, loc *codeLoc) completionID {
