@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -200,7 +201,7 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 		result.err = errors.New(msg)
 	} else {
 		decodeGob(res.Body, val)
-		result.value = val
+		result.value = reflect.ValueOf(val).Elem()
 	}
 	ch <- result
 }
