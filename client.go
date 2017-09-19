@@ -197,7 +197,7 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	result := &futureResult{}
 	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
 		var msg string
-		decodeGob(res.Body, msg)
+		decodeGob(res.Body, &msg)
 		result.err = errors.New(msg)
 	} else {
 		decodeGob(res.Body, val)
