@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -82,6 +83,7 @@ type CloudFuture interface {
 	//ThenRun(fn interface{}) CloudFuture
 	//Handle(fn interface{}) CloudFuture
 	//Exceptionally(fn interface{}) CloudFuture
+	CreateExternalFuture() ExternalCloudFuture
 }
 
 type ExternalCloudFuture interface {
@@ -96,18 +98,6 @@ type cloudThread struct {
 	codec     codec
 }
 
-func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
-	return ct.newCloudFuture(ct.completer.delay(ct.threadID, duration))
-}
-
-func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
-	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value))
-}
-
-func (ct *cloudThread) commit() {
-	ct.completer.commit(ct.threadID)
-}
-
 type cloudFuture struct {
 	*cloudThread
 	completionID completionID
@@ -117,15 +107,65 @@ func (ct *cloudThread) newCloudFuture(cid completionID) CloudFuture {
 	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
+// wraps result to runtime.Caller()
+type codeLoc struct {
+	file string
+	line int
+	ok   bool
+}
+
+func (cl *codeLoc) String() string {
+	if cl.ok {
+		return fmt.Sprintf("%s:%d", cl.file, cl.line)
+	}
+	return "unknown"
+}
+
+func newCodeLoc() *codeLoc {
+	_, file, line, ok := runtime.Caller(1)
+	return &codeLoc{file: file, line: line, ok: ok}
+}
+
+func (ct *cloudThread) commit() {
+	ct.completer.commit(ct.threadID)
+}
+
 func (cf *cloudFuture) Get(result interface{}) chan interface{} {
 	return cf.completer.getAsync(cf.threadID, cf.completionID, result)
 }
 
+func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
+	return ct.newCloudFuture(ct.completer.delay(ct.threadID, duration, newCodeLoc()))
+}
+
+func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
+	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()))
+}
+
 func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
-	cid := cf.completer.thenApply(cf.threadID, cf.completionID, function)
+	cid := cf.completer.thenApply(cf.threadID, cf.completionID, function, newCodeLoc())
 	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
 }
 
 type externalCloudFuture struct {
 	cloudFuture
+	completionURL *url.URL
+	failURL       *url.URL
+}
+
+func (ex *externalCloudFuture) CompletionURL() *url.URL {
+	return ex.completionURL
+}
+
+func (ex *externalCloudFuture) FailURL() *url.URL {
+	return ex.failURL
+}
+
+func (cf *cloudFuture) CreateExternalFuture() ExternalCloudFuture {
+	ec := cf.completer.createExternalCompletion(cf.threadID, newCodeLoc())
+	return &externalCloudFuture{
+		cloudFuture:   cloudFuture{cloudThread: cf.cloudThread, completionID: ec.cid},
+		completionURL: ec.completionURL,
+		failURL:       ec.failURL,
+	}
 }

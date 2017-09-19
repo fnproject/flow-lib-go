@@ -19,6 +19,7 @@ const (
 	ThreadIDHeader     = HeaderPrefix + "ThreadID"
 	StageIDHeader      = HeaderPrefix + "StageID"
 	ResultStatusHeader = HeaderPrefix + "ResultStatus"
+	CodeLocationHeader = HeaderPrefix + "Codeloc"
 
 	SuccessHeaderValue = "success"
 	FailureHeaderValue = "failure"
@@ -27,6 +28,7 @@ const (
 
 	// standard headers
 	ContentTypeHeader = "Content-Type"
+	JSONMediaHeader   = "application/json"
 	GobMediaHeader    = "application/x-gob"
 
 	MaxContinuationArgCount = 2
@@ -42,6 +44,10 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 
 type continuationRef struct {
 	Key cKey `json:"continuation-key"`
+}
+
+func (cr *continuationRef) getKey() string {
+	return string(cr.Key)
 }
 
 func newContinuationRef(function interface{}) *continuationRef {
@@ -76,15 +82,49 @@ func (p *completerProtocol) delayReq(tid threadID, duration time.Duration) *http
 	return createRequest("POST", fmt.Sprintf("%s/graph/%s/delay?delayMs=%d", p.baseURL, tid, int64(duration)), nil)
 }
 
-func (p *completerProtocol) thenApplyReq(tid threadID, cid completionID, function interface{}) *http.Request {
+func (p *completerProtocol) rootStageURL(op string, tid threadID) string {
+	return fmt.Sprintf("%s/graph/%s/%s", p.baseURL, tid, op)
+}
+
+func (p *completerProtocol) chainedStageURL(op string, tid threadID, cid completionID) string {
+	return fmt.Sprintf("%s/graph/%s/stage/%s/%s", p.baseURL, tid, cid, op)
+}
+
+func (p *completerProtocol) chained(op string, tid threadID, cid completionID, fn interface{}, loc *codeLoc) *http.Request {
+	return p.completionWithBody(p.chainedStageURL(op, tid, cid), fn, loc)
+}
+
+func (p *completerProtocol) chainedWithOther(op string, tid threadID, cid completionID, altCid completionID, fn interface{}, loc *codeLoc) *http.Request {
+	URL := fmt.Sprintf("%s/graph/%s/stage/%s/%s?other=%s", p.baseURL, tid, cid, op, string(altCid))
+	return p.completionWithBody(URL, fn, loc)
+}
+
+func (p *completerProtocol) completionWithBody(URL string, fn interface{}, loc *codeLoc) *http.Request {
+	b, err := json.Marshal(newContinuationRef(fn))
+	if err != nil {
+		panic("Failed to marshal continuation reference")
+	}
+	return p.completion(URL, loc, bytes.NewReader(b))
+}
+
+func (p *completerProtocol) completion(URL string, loc *codeLoc, r io.Reader) *http.Request {
+	req := createRequest("POST", URL, r)
+	req.Header.Set(ContentTypeHeader, JSONMediaHeader)
+	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+	req.Header.Set(CodeLocationHeader, loc.String())
+	return req
+}
+
+func (p *completerProtocol) supplyReq(tid threadID, function interface{}) *http.Request {
 	ref := newContinuationRef(function)
 	b, err := json.Marshal(ref)
 	if err != nil {
 		panic("Failed to marshal continuation reference")
 	}
-	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/stage/%s/thenApply", p.baseURL, tid, cid), bytes.NewReader(b))
+	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/supply", p.baseURL, tid), bytes.NewReader(b))
 	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
 	req.Header.Set(ContentTypeHeader, "application/json")
+	req.Header.Set(CodeLocationHeader, ref.getKey())
 	return req
 }
 
