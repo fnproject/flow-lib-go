@@ -122,7 +122,7 @@ func (cl *codeLoc) String() string {
 }
 
 func newCodeLoc() *codeLoc {
-	_, file, line, ok := runtime.Caller(1)
+	_, file, line, ok := runtime.Caller(2)
 	return &codeLoc{file: file, line: line, ok: ok}
 }
 
