@@ -72,13 +72,13 @@ type CloudThread interface {
 	AnyOf(futures ...CloudFuture) CloudFuture
 }
 
-type FutureResult struct {
-	Value interface{}
-	Err   error
+type FutureResult interface {
+	Value() interface{}
+	Err() error
 }
 
 type CloudFuture interface {
-	Get(result interface{}) chan *FutureResult
+	Get(result interface{}) chan FutureResult
 	ThenApply(function interface{}) CloudFuture
 	ThenCompose(function interface{}) CloudFuture
 	ThenCombine(other CloudFuture, function interface{}) CloudFuture
@@ -193,7 +193,7 @@ func (ct *cloudThread) AnyOf(futures ...CloudFuture) CloudFuture {
 	return ct.newCloudFuture(ct.completer.anyOf(ct.threadID, futureCids(futures...), newCodeLoc()))
 }
 
-func (cf *cloudFuture) Get(result interface{}) chan *FutureResult {
+func (cf *cloudFuture) Get(result interface{}) chan FutureResult {
 	return cf.completer.getAsync(cf.threadID, cf.completionID, result)
 }
 

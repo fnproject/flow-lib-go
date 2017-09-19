@@ -28,7 +28,7 @@ type completionID string
 type completerClient interface {
 	createThread(fid string) threadID
 	commit(tid threadID)
-	getAsync(tid threadID, cid completionID, val interface{}) chan *FutureResult
+	getAsync(tid threadID, cid completionID, val interface{}) chan FutureResult
 	completedValue(tid threadID, value interface{}, loc *codeLoc) completionID
 	failedFuture(tid threadID, err error, loc *codeLoc) completionID
 	delay(tid threadID, duration time.Duration, loc *codeLoc) completionID
@@ -166,13 +166,26 @@ func (cs *completerServiceClient) delay(tid threadID, duration time.Duration, lo
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 
-func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val interface{}) chan *FutureResult {
-	ch := make(chan *FutureResult)
+type futureResult struct {
+	value interface{}
+	err   error
+}
+
+func (f *futureResult) Value() interface{} {
+	return f.value
+}
+
+func (f *futureResult) Err() error {
+	return f.err
+}
+
+func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val interface{}) chan FutureResult {
+	ch := make(chan FutureResult)
 	go cs.get(tid, cid, val, ch)
 	return ch
 }
 
-func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan *FutureResult) {
+func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan FutureResult) {
 	req := cs.protocol.getStageReq(tid, cid)
 	res, err := hc.Do(req)
 	if err != nil {
@@ -180,14 +193,14 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	}
 	defer res.Body.Close()
 
-	result := &FutureResult{}
+	result := &futureResult{}
 	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
 		var msg string
 		decodeGob(res.Body, msg)
-		result.Err = errors.New(msg)
+		result.err = errors.New(msg)
 	} else {
 		decodeGob(res.Body, val)
-		result.Value = val
+		result.value = val
 	}
 	ch <- result
 }
