@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
 	"os"
 	"reflect"
 )
@@ -198,13 +199,17 @@ func continuationArgTypes(continuation interface{}) (argTypes []reflect.Type) {
 	return
 }
 
-func decodeArg(continuation interface{}, argIndex int, reader io.Reader) interface{} {
+func decodeArg(continuation interface{}, argIndex int, reader io.Reader, header *textproto.MIMEHeader) interface{} {
 	argTypes := continuationArgTypes(continuation)
 	if len(argTypes) < argIndex {
 		panic("Invalid number of arguments decoded for continuation")
 	}
-	// TODO depending on the header decode as gob
-	return decodeTypedGob(reader, argTypes[argIndex])
+	switch header.Get(ContentTypeHeader) {
+	case GobMediaHeader:
+		return decodeTypedGob(reader, argTypes[argIndex])
+	default:
+		panic("Unkown content type in http multipart")
+	}
 }
 
 func decodeContinuationArgs(continuation interface{}, inputs ...io.Reader) (results []interface{}) {

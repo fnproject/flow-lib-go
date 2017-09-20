@@ -2,6 +2,7 @@ package completions
 
 import (
 	"fmt"
+	"net/textproto"
 	"strings"
 	"testing"
 
@@ -60,7 +61,7 @@ func TestInvoke(t *testing.T) {
 }
 
 func TestDecodeArgString(t *testing.T) {
-	r := decodeArg(strings.ToUpper, 0, encodeGob("foo"))
+	r := decodeArg(strings.ToUpper, 0, encodeGob("foo"), gobArgHeader())
 	assert.Equal(t, "foo", r)
 	result, err := invoke(strings.ToUpper, r)
 	assert.Equal(t, "FOO", result)
@@ -76,8 +77,14 @@ func testFoo(f *foo) *foo {
 	return f
 }
 
+func gobArgHeader() *textproto.MIMEHeader {
+	hdr := &textproto.MIMEHeader{}
+	hdr.Set(ContentTypeHeader, GobMediaHeader)
+	return hdr
+}
+
 func TestDecodeArgWithStruct(t *testing.T) {
-	r := decodeArg(testFoo, 0, encodeGob(&foo{Name: "foo"}))
+	r := decodeArg(testFoo, 0, encodeGob(&foo{Name: "foo"}), gobArgHeader())
 	assert.Equal(t, "foo", r.(*foo).Name)
 	result, err := invoke(testFoo, r)
 	assert.Equal(t, "FOO", result.(*foo).Name)
