@@ -79,6 +79,7 @@ func testFoo(f *foo) *foo {
 
 func gobArgHeader() *textproto.MIMEHeader {
 	hdr := &textproto.MIMEHeader{}
+	hdr.Set(DatumTypeHeader, BlobDatumHeader)
 	hdr.Set(ContentTypeHeader, GobMediaHeader)
 	return hdr
 }

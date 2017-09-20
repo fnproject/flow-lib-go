@@ -204,11 +204,20 @@ func decodeArg(continuation interface{}, argIndex int, reader io.Reader, header 
 	if len(argTypes) < argIndex {
 		panic("Invalid number of arguments decoded for continuation")
 	}
-	switch header.Get(ContentTypeHeader) {
-	case GobMediaHeader:
-		return decodeTypedGob(reader, argTypes[argIndex])
+	switch header.Get(DatumTypeHeader) {
+	case BlobDatumHeader:
+		return decodeBlob(argTypes[argIndex], reader, header)
 	default:
 		panic("Unkown content type in http multipart")
+	}
+}
+
+func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) interface{} {
+	switch header.Get(ContentTypeHeader) {
+	case GobMediaHeader:
+		return decodeTypedGob(reader, t)
+	default:
+		panic("Unkown content type for blob")
 	}
 }
 
