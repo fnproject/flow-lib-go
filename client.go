@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -197,11 +196,11 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	result := &futureResult{}
 	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
 		var msg string
-		decodeGob(res.Body, &msg)
+		decodeGob(res.Body, msg)
 		result.err = errors.New(msg)
 	} else {
 		decodeGob(res.Body, val)
-		result.value = reflect.ValueOf(val).Elem()
+		result.value = val
 	}
 	ch <- result
 }

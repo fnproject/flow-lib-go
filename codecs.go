@@ -7,7 +7,7 @@ import (
 const (
 	formatEnv  = "FN_FORMAT"
 	appNameEnv = "APP_NAME"
-	routeEnv   = "ROUTE"
+	pathEnv    = "FN_PATH"
 )
 
 type codec interface {
@@ -28,7 +28,7 @@ func newCodec() codec {
 	}
 	return &defaultCodec{
 		appName: lookupReqEnv(appNameEnv),
-		route:   lookupReqEnv(routeEnv),
+		route:   lookupReqEnv(pathEnv),
 	}
 }
 

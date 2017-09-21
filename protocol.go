@@ -24,7 +24,13 @@ const (
 	SuccessHeaderValue = "success"
 	FailureHeaderValue = "failure"
 
-	BlobDatumHeader = "blob"
+	BlobDatumHeader     = "blob"
+	EmptyDatumHeader    = "empty"
+	ErrorDatumHeader    = "error"
+	StageRefDatumHeader = "stageref"
+	HTTPReqDatumHeader  = "httpreq"
+	HTTPRespDatumHeader = "httpresp"
+	StateDatumHeader    = "state"
 
 	// standard headers
 	ContentTypeHeader = "Content-Type"
@@ -216,6 +222,7 @@ func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) 
 	switch header.Get(ContentTypeHeader) {
 	case GobMediaHeader:
 		return decodeTypedGob(reader, t)
+
 	default:
 		panic("Unkown content type for blob")
 	}
