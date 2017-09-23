@@ -5,9 +5,11 @@ import (
 )
 
 const (
-	formatEnv  = "FN_FORMAT"
-	appNameEnv = "APP_NAME"
+	method     = "FN_METHOD"
+	appNameEnv = "FN_APP_NAME"
 	pathEnv    = "FN_PATH"
+	reqUrlEnv  = "FN_REQUEST_URL"
+	formatEnv  = "FN_FORMAT"
 )
 
 type codec interface {
