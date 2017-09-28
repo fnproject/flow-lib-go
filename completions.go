@@ -15,14 +15,17 @@ var debugLog = false
 
 func Debug(withDebug bool) {
 	debugMutex.Lock()
-	defer debugMutex.Unlock()
 	debugLog = withDebug
+	debugMutex.Unlock()
+
 	if debugLog {
 		log("Enabled debugging")
 	}
 }
 
 func log(msg string) {
+	debugMutex.Lock()
+	defer debugMutex.Unlock()
 	if debugLog {
 		os.Stderr.WriteString(fmt.Sprintln(msg))
 	}
