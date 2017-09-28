@@ -27,7 +27,7 @@ func log(msg string) {
 	debugMutex.Lock()
 	defer debugMutex.Unlock()
 	if debugLog {
-		os.Stderr.WriteString(fmt.Sprintln(msg))
+		fmt.Fprintln(os.Stderr, msg)
 	}
 }
 
