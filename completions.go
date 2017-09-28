@@ -18,11 +18,11 @@ func Debug(withDebug bool) {
 	defer debugMutex.Unlock()
 	debugLog = withDebug
 	if debugLog {
-		log("Enabled debugging")
+		debug("Enabled debugging")
 	}
 }
 
-func log(msg string) {
+func debug(msg string) {
 	if debugLog {
 		os.Stderr.WriteString(fmt.Sprintln(msg))
 	}
@@ -35,8 +35,11 @@ func WithCloudThread(fn func(ct CloudThread)) {
 		return
 	}
 	ct := newCloudThread(codec)
+	debug(fmt.Sprintf("Created new thread %s", ct.threadID))
 	defer ct.commit()
+	debug("Invoking user function")
 	fn(ct)
+	debug("Completed invocation of user function")
 }
 
 func newCloudThread(codec codec) *cloudThread {

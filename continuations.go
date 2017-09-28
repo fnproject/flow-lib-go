@@ -23,7 +23,9 @@ func invoke(continuation interface{}, args ...interface{}) (result interface{}, 
 			err = fmt.Errorf("%v", r)
 		}
 	}()
+	debug(fmt.Sprintf("Invoking continuation with %d args", len(args)))
 	values := invokeContinuation(continuation, args...)
+	debug(fmt.Sprintf("Continuation returned %d values", len(args)))
 	switch len(values) {
 	case 0:
 		return nil, nil
@@ -32,7 +34,7 @@ func invoke(continuation interface{}, args ...interface{}) (result interface{}, 
 	case 2:
 		return valToInterface(values[0]), valToError(values[1])
 	default:
-		return nil, fmt.Errorf("Invalid continuation")
+		return nil, fmt.Errorf("Continuation returned invalid number of values")
 	}
 }
 
@@ -82,10 +84,12 @@ func invokeFromRegistry(key string, args ...interface{}) (interface{}, error) {
 }
 
 func handleContinuation(codec codec) {
+	debug("Handling continuation")
 	cType, ok := codec.getHeader(ContentTypeHeader)
 	if !ok {
 		panic("Missing content type header")
 	}
+	debug(fmt.Sprintf("Handling continuation of type %s", cType))
 	mediaType, params, err := mime.ParseMediaType(cType)
 	if err != nil {
 		panic("Failed to get content type for continuation")
@@ -100,10 +104,10 @@ func handleContinuation(codec codec) {
 			}
 			var val interface{}
 			if len(decoded) == 0 {
-				log("Unmarshalling continuation")
+				debug("Unmarshalling continuation")
 				val = decodeContinuation(p)
 			} else {
-				log(fmt.Sprintf("Unmarshalling arg %d", len(decoded)))
+				debug(fmt.Sprintf("Unmarshalling arg %d", len(decoded)))
 				val = decodeArg(decoded[0], len(decoded)-1, p, &p.Header)
 			}
 			decoded = append(decoded, val)

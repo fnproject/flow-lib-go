@@ -107,7 +107,7 @@ func TestContinuationKeyIsConstant(t *testing.T) {
 
 func TestDebugPrints(t *testing.T) {
 	Debug(true)
-	log("foo")
+	debug("foo")
 }
 
 func toUpperString(arg0 string) string {
