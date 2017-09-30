@@ -3,6 +3,7 @@ package completions
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,14 +13,14 @@ import (
 
 var hc = &http.Client{
 	Transport: &http.Transport{
-        Dial: (&net.Dialer{
-                Timeout:   30 * time.Second,
-                KeepAlive: 30 * time.Second,
-        }).Dial,
-        TLSHandshakeTimeout:   10 * time.Second,
-        ResponseHeaderTimeout: 10 * time.Second,
-        ExpectContinueTimeout: 1 * time.Second,
-    }
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	},
 }
 
 func newCompleterClient() completerClient {
