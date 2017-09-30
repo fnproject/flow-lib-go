@@ -5,11 +5,12 @@ import (
 )
 
 const (
-	method     = "FN_METHOD"
-	appNameEnv = "FN_APP_NAME"
-	pathEnv    = "FN_PATH"
-	reqUrlEnv  = "FN_REQUEST_URL"
-	formatEnv  = "FN_FORMAT"
+	method         = "FN_METHOD"
+	appNameEnv     = "FN_APP_NAME"
+	pathEnv        = "FN_PATH"
+	reqUrlEnv      = "FN_REQUEST_URL"
+	formatEnv      = "FN_FORMAT"
+	fnHeaderPrefix = "FN_HEADER_"
 )
 
 type codec interface {
@@ -49,7 +50,7 @@ func (c *defaultCodec) isContinuation() bool {
 
 func (c *defaultCodec) getHeader(header string) (string, bool) {
 	header = strings.Replace(header, "-", "_", -1)
-	header = "HEADER_" + header
+	header = fnHeaderPrefix + header
 	return lookupEnv(strings.ToUpper(header))
 }
 

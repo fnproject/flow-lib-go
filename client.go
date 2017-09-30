@@ -11,7 +11,15 @@ import (
 )
 
 var hc = &http.Client{
-	Timeout: time.Second * 10,
+	Transport: &http.Transport{
+        Dial: (&net.Dialer{
+                Timeout:   30 * time.Second,
+                KeepAlive: 30 * time.Second,
+        }).Dial,
+        TLSHandshakeTimeout:   10 * time.Second,
+        ResponseHeaderTimeout: 10 * time.Second,
+        ExpectContinueTimeout: 1 * time.Second,
+    }
 }
 
 func newCompleterClient() completerClient {
@@ -186,6 +194,7 @@ func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val i
 }
 
 func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan FutureResult) {
+	debug(fmt.Sprintf("Getting result for stage %s and thread %s", cid, tid))
 	req := cs.protocol.getStageReq(tid, cid)
 	res, err := hc.Do(req)
 	if err != nil {
@@ -195,10 +204,12 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 
 	result := &futureResult{}
 	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
+		debug("Decoding failed result")
 		var msg string
 		decodeGob(res.Body, &msg)
 		result.err = errors.New(msg)
 	} else {
+		debug("Decoding successful result")
 		decodeGob(res.Body, val)
 		result.value = val
 	}

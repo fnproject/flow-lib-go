@@ -146,6 +146,7 @@ func (p *completerProtocol) commit(tid threadID) *http.Request {
 
 // panics if the request can't be created
 func createRequest(method string, url string, r io.Reader) *http.Request {
+	debug(fmt.Sprintf("Requesting URL %s", url))
 	req, err := http.NewRequest(method, url, r)
 	if err != nil {
 		panic("Failed to create request object")
