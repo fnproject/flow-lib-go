@@ -1,6 +1,7 @@
 package completions
 
 import (
+	"net/textproto"
 	"reflect"
 	"testing"
 
@@ -39,23 +40,29 @@ func TestContinuationTypesExceedsArgs(t *testing.T) {
 	})
 }
 
-func TestDecodeContinuationArgsWithOne(t *testing.T) {
-	args := decodeContinuationArgs(withOneArg, encodeGob("foo"))
-	assert.Equal(t, 1, len(args))
-	assert.Equal(t, "foo", args[0])
+func TestDecodeContinuationArgsWithOneGob(t *testing.T) {
+	arg := decodeArg(withOneArg, 0, encodeGob("foo"), gobHeaders())
+	assert.Equal(t, "foo", arg)
 }
 
-func TestDecodeContinuationArgsWithTwo(t *testing.T) {
-	args := decodeContinuationArgs(withTwoArgs, encodeGob("foo"), encodeGob(25))
-	assert.Equal(t, 2, len(args))
-	assert.Equal(t, "foo", args[0])
-	assert.IsType(t, 25, args[1])
+func TestDecodeContinuationArgsWithTwoGobs(t *testing.T) {
+	arg := decodeArg(withTwoArgs, 0, encodeGob("foo"), gobHeaders())
+	assert.Equal(t, "foo", arg)
+	arg = decodeArg(withTwoArgs, 1, encodeGob(25), gobHeaders())
+	assert.IsType(t, 25, arg)
 }
 
 func TestDecodeContinuationArgsThatFails(t *testing.T) {
 	assert.Panics(t, func() {
-		decodeContinuationArgs(withOneArg, encodeGob("foo"), encodeGob(25))
+		decodeArg(withOneArg, 2, encodeGob(25), gobHeaders())
 	})
+}
+
+func gobHeaders() *textproto.MIMEHeader {
+	h := textproto.MIMEHeader{}
+	h.Add(ContentTypeHeader, GobMediaHeader)
+	h.Add(DatumTypeHeader, BlobDatumHeader)
+	return &h
 }
 
 func withOneArg(one string) {

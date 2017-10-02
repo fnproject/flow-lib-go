@@ -216,19 +216,6 @@ func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) 
 	}
 }
 
-func decodeContinuationArgs(continuation interface{}, inputs ...io.Reader) (results []interface{}) {
-	argTypes := continuationArgTypes(continuation)
-	results = make([]interface{}, len(argTypes))
-	if len(argTypes) != len(inputs) {
-		panic("Invalid number of arguments decoded for continuation")
-	}
-	for i, input := range inputs {
-		// TODO depending on the header decode as gob
-		results[i] = decodeTypedGob(input, argTypes[i])
-	}
-	return
-}
-
 func writeContinuationResponse(result interface{}, err error) {
 	fmt.Printf("HTTP/1.1 200\r\n")
 	fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
