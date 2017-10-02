@@ -123,19 +123,6 @@ func (p *completerProtocol) completion(URL string, loc *codeLoc, r io.Reader) *h
 	return req
 }
 
-func (p *completerProtocol) supplyReq(tid threadID, function interface{}) *http.Request {
-	ref := newContinuationRef(function)
-	b, err := json.Marshal(ref)
-	if err != nil {
-		panic("Failed to marshal continuation reference")
-	}
-	req := createRequest("POST", fmt.Sprintf("%s/graph/%s/supply", p.baseURL, tid), bytes.NewReader(b))
-	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
-	req.Header.Set(ContentTypeHeader, "application/json")
-	req.Header.Set(CodeLocationHeader, ref.getKey())
-	return req
-}
-
 func (p *completerProtocol) getStageReq(tid threadID, cid completionID) *http.Request {
 	return createRequest("GET", fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, tid, cid), nil)
 }
