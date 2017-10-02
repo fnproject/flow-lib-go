@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -18,9 +19,11 @@ func Debug(withDebug bool) {
 	debugLog = withDebug
 	debugMutex.Unlock()
 
-	if debugLog {
-		debug("Enabled debugging")
-	}
+	debug("Enabled debugging")
+}
+
+func Log(msg string) {
+	debug(msg)
 }
 
 func debug(msg string) {
@@ -79,7 +82,7 @@ type CloudThread interface {
 }
 
 type FutureResult interface {
-	Value() interface{}
+	Value() reflect.Value
 	Err() error
 }
 

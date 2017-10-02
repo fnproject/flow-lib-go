@@ -249,12 +249,12 @@ func writeContinuationResponse(result interface{}, err error) {
 	var buf *bytes.Buffer
 	var status string
 	if err != nil {
-		os.Stderr.WriteString("Encoding error " + err.Error())
+		debug(fmt.Sprintf("Encoding error %s", err.Error()))
 		errMsg := err.Error()
 		buf = encodeGob(&errMsg)
 		status = FailureHeaderValue
 	} else {
-		os.Stderr.WriteString(fmt.Sprintf("Encoding result %v", result))
+		debug(fmt.Sprintf("Encoding result %v", result))
 		buf = encodeGob(result)
 		status = SuccessHeaderValue
 	}
