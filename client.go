@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -177,8 +176,8 @@ type futureResult struct {
 	err   error
 }
 
-func (f *futureResult) Value() reflect.Value {
-	return reflect.ValueOf(f.value).Elem()
+func (f *futureResult) Value() interface{} {
+	return f.value
 }
 
 func (f *futureResult) Err() error {

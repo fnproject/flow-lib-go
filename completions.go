@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -100,7 +99,7 @@ type CloudThread interface {
 }
 
 type FutureResult interface {
-	Value() reflect.Value
+	Value() interface{}
 	Err() error
 }
 
