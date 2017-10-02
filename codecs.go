@@ -18,6 +18,7 @@ type codec interface {
 	getRoute() string
 	isContinuation() bool
 	getHeader(string) (string, bool)
+	getThreadID() threadID
 }
 
 type defaultCodec struct {
@@ -46,6 +47,14 @@ func (c *defaultCodec) getRoute() string {
 func (c *defaultCodec) isContinuation() bool {
 	_, ok := c.getHeader(StageIDHeader)
 	return ok
+}
+
+func (c *defaultCodec) getThreadID() threadID {
+	tid, ok := c.getHeader(ThreadIDHeader)
+	if !ok {
+		panic("Missing thread ID in continuation")
+	}
+	return threadID(tid)
 }
 
 func (c *defaultCodec) getHeader(header string) (string, bool) {

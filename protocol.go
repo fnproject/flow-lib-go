@@ -244,7 +244,16 @@ func writeContinuationResponse(result interface{}, err error) {
 
 	var buf *bytes.Buffer
 	var status string
-	if err != nil {
+	// TODO combine all in one result arg and do a switch
+	if stageRef, ok := result.(*cloudFuture); ok {
+		debug(fmt.Sprintf("Encoding stage ref %s", stageRef.completionID))
+		fmt.Printf("%s: %s\r\n", DatumTypeHeader, StageRefDatumHeader)
+		fmt.Printf("%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
+		fmt.Printf("%s: %s\r\n", StageIDHeader, stageRef.completionID)
+		fmt.Printf("\r\n")
+		buf.WriteTo(os.Stdout)
+		return
+	} else if err != nil {
 		debug(fmt.Sprintf("Encoding error %s", err.Error()))
 		errMsg := err.Error()
 		buf = encodeGob(&errMsg)

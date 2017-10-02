@@ -34,17 +34,27 @@ func debug(msg string) {
 	}
 }
 
-func WithCloudThread(fn func(ct CloudThread)) {
+var ct *cloudThread
+
+func CurrentThread() CloudThread {
+	if ct == nil {
+		panic("Tried accessing unintialized thread")
+	}
+	return ct
+}
+
+func WithCloudThread(fn func()) {
 	codec := newCodec()
 	if codec.isContinuation() {
+		ct = awakeCloudThread(codec)
 		handleContinuation(codec)
 		return
 	}
-	ct := newCloudThread(codec)
+	ct = newCloudThread(codec)
 	debug(fmt.Sprintf("Created new thread %s", ct.threadID))
 	defer ct.commit()
 	debug("Invoking user function")
-	fn(ct)
+	fn()
 	debug("Completed invocation of user function")
 }
 
@@ -53,6 +63,15 @@ func newCloudThread(codec codec) *cloudThread {
 	return &cloudThread{
 		completer: completer,
 		threadID:  completer.createThread(getFunctionID(codec)),
+		codec:     codec,
+	}
+}
+
+func awakeCloudThread(codec codec) *cloudThread {
+	completer := newCompleterClient()
+	return &cloudThread{
+		completer: completer,
+		threadID:  codec.getThreadID(),
 		codec:     codec,
 	}
 }
