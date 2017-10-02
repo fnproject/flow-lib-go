@@ -3,6 +3,7 @@ package completions
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -202,9 +203,13 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	result := &futureResult{}
 	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
 		debug("Decoding failed result")
-		var msg string
-		decodeGob(res.Body, &msg)
-		result.err = errors.New(msg)
+		errType := res.Header.Get(ErrorTypeHeader)
+		debug(fmt.Sprintf("Processing error of type %s", errType))
+		if readBytes, readError := ioutil.ReadAll(res.Body); readError == nil {
+			result.err = errors.New(string(readBytes))
+		} else {
+			result.err = errors.New("Unknown error")
+		}
 	} else {
 		debug("Decoding successful result")
 		decodeGob(res.Body, val)
