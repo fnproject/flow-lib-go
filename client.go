@@ -172,12 +172,12 @@ func (cs *completerServiceClient) delay(tid threadID, duration time.Duration, lo
 }
 
 type futureResult struct {
-	value reflect.Value
+	value interface{}
 	err   error
 }
 
 func (f *futureResult) Value() reflect.Value {
-	return value
+	return reflect.ValueOf(f.value).Elem()
 }
 
 func (f *futureResult) Err() error {
