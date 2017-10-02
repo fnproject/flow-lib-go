@@ -1,6 +1,7 @@
 package completions
 
 import (
+	"errors"
 	"net/textproto"
 	"reflect"
 	"testing"
@@ -56,6 +57,18 @@ func TestDecodeContinuationArgsThatFails(t *testing.T) {
 	assert.Panics(t, func() {
 		decodeArg(withOneArg, 2, encodeGob(25), gobHeaders())
 	})
+}
+
+var cp = completerProtocol{baseURL: "http://test.com"}
+
+func TestCompletedValueReqWithSuccess(t *testing.T) {
+	req := cp.completedValueReq("tid", "foo")
+	assert.Equal(t, SuccessHeaderValue, req.Header.Get(ResultStatusHeader))
+}
+
+func TestCompletedValueReqWithError(t *testing.T) {
+	req := cp.completedValueReq("tid", errors.New("foo"))
+	assert.Equal(t, SuccessHeaderValue, req.Header.Get(ResultStatusHeader))
 }
 
 func gobHeaders() *textproto.MIMEHeader {

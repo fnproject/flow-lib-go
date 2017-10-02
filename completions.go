@@ -74,8 +74,7 @@ type CloudThread interface {
 	// InvokeFunction(functionID string, method HTTPMethod) CloudFuture
 	Supply(function interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
-	CompletedValue(value interface{}) CloudFuture
-	FailedFuture(err error) CloudFuture
+	CompletedValue(value interface{}) CloudFuture // value of error indicates failed future
 	CreateExternalFuture() ExternalCloudFuture
 	AllOf(futures ...CloudFuture) CloudFuture
 	AnyOf(futures ...CloudFuture) CloudFuture
@@ -156,10 +155,6 @@ func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
 
 func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
 	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()))
-}
-
-func (ct *cloudThread) FailedFuture(err error) CloudFuture {
-	return ct.newCloudFuture(ct.completer.failedFuture(ct.threadID, err, newCodeLoc()))
 }
 
 type externalCloudFuture struct {

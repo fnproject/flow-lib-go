@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/textproto"
 	"os"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -20,6 +22,7 @@ const (
 	StageIDHeader      = HeaderPrefix + "StageID"
 	ResultStatusHeader = HeaderPrefix + "ResultStatus"
 	CodeLocationHeader = HeaderPrefix + "Codeloc"
+	ErrorTypeHeader    = HeaderPrefix + "Errortype"
 
 	SuccessHeaderValue = "success"
 	FailureHeaderValue = "failure"
@@ -77,15 +80,19 @@ func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 	return req
 }
 
-func (p *completerProtocol) gobValueReq(tid threadID, success bool, value interface{}) *http.Request {
+func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *http.Request {
 	URL := p.rootStageURL("completedValue", tid)
-	req := createRequest("POST", URL, encodeGob(value))
-	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
-	req.Header.Set(ContentTypeHeader, GobMediaHeader)
-	if success {
-		req.Header.Set(ResultStatusHeader, SuccessHeaderValue)
-	} else {
+	var req *http.Request
+	if err, isErr := value.(error); isErr {
+		req := createRequest("POST", URL, strings.NewReader(err.Error()))
 		req.Header.Set(ResultStatusHeader, FailureHeaderValue)
+		req.Header.Set(ErrorTypeHeader, err.Error())
+		req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+	} else {
+		req := createRequest("POST", URL, encodeGob(value))
+		req.Header.Set(ResultStatusHeader, SuccessHeaderValue)
+		req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+		req.Header.Set(ContentTypeHeader, GobMediaHeader)
 	}
 	return req
 }
@@ -201,16 +208,27 @@ func decodeArg(continuation interface{}, argIndex int, reader io.Reader, header 
 	switch header.Get(DatumTypeHeader) {
 	case BlobDatumHeader:
 		return decodeBlob(argTypes[argIndex], reader, header)
+	case EmptyDatumHeader:
+		return nil
+	case ErrorDatumHeader:
+		msg := header.Get(ErrorTypeHeader)
+		if msg == "" {
+			msg = "Unknown error"
+		}
+		return errors.New(msg)
+	case StageRefDatumHeader:
+	case HTTPReqDatumHeader:
+	case HTTPRespDatumHeader:
 	default:
 		panic("Unkown content type in http multipart")
 	}
+	panic("Unkown content type in http multipart")
 }
 
 func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) interface{} {
 	switch header.Get(ContentTypeHeader) {
 	case GobMediaHeader:
 		return decodeTypedGob(reader, t)
-
 	default:
 		panic("Unkown content type for blob")
 	}
