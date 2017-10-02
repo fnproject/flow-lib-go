@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/textproto"
 	"os"
@@ -87,8 +88,8 @@ func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *
 	if err, isErr := value.(error); isErr {
 		req = createRequest("POST", URL, strings.NewReader(err.Error()))
 		req.Header.Set(ResultStatusHeader, FailureHeaderValue)
-		req.Header.Set(ErrorTypeHeader, err.Error())
-		req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+		req.Header.Set(ErrorTypeHeader, "user-defined-error")
+		req.Header.Set(DatumTypeHeader, ErrorDatumHeader)
 		req.Header.Set(ContentTypeHeader, TextMediaHeader)
 	} else {
 		req = createRequest("POST", URL, encodeGob(value))
@@ -213,11 +214,12 @@ func decodeArg(continuation interface{}, argIndex int, reader io.Reader, header 
 	case EmptyDatumHeader:
 		return nil
 	case ErrorDatumHeader:
-		msg := header.Get(ErrorTypeHeader)
-		if msg == "" {
-			msg = "Unknown error"
+		errType := header.Get(ErrorTypeHeader)
+		debug(fmt.Sprintf("Processing error of type %s", errType))
+		if readBytes, readError := ioutil.ReadAll(reader); readError == nil {
+			return errors.New(string(readBytes))
 		}
-		return errors.New(msg)
+		return errors.New("Unknown error")
 	case StageRefDatumHeader:
 	case HTTPReqDatumHeader:
 	case HTTPRespDatumHeader:
