@@ -39,6 +39,7 @@ const (
 	ContentTypeHeader = "Content-Type"
 	JSONMediaHeader   = "application/json"
 	GobMediaHeader    = "application/x-gob"
+	TextMediaHeader   = "text/plain"
 
 	MaxContinuationArgCount = 2
 )
@@ -82,14 +83,15 @@ func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 
 func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *http.Request {
 	URL := p.rootStageURL("completedValue", tid)
-	var req *http.Request
+	var req http.Request
 	if err, isErr := value.(error); isErr {
-		req := createRequest("POST", URL, strings.NewReader(err.Error()))
+		req = createRequest("POST", URL, strings.NewReader(err.Error()))
 		req.Header.Set(ResultStatusHeader, FailureHeaderValue)
 		req.Header.Set(ErrorTypeHeader, err.Error())
 		req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+		req.Header.Set(ContentTypeHeader, TextMediaHeader)
 	} else {
-		req := createRequest("POST", URL, encodeGob(value))
+		req = createRequest("POST", URL, encodeGob(value))
 		req.Header.Set(ResultStatusHeader, SuccessHeaderValue)
 		req.Header.Set(DatumTypeHeader, BlobDatumHeader)
 		req.Header.Set(ContentTypeHeader, GobMediaHeader)
