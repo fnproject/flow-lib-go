@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/textproto"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -317,35 +316,6 @@ func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) 
 	}
 }
 
-func writeContinuationResponse(result interface{}, err error) {
-	fmt.Printf("HTTP/1.1 200\r\n")
-	fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
-
-	var buf *bytes.Buffer
-	var status string
-	// TODO combine all in one result arg and do a switch
-	if stageRef, ok := result.(*cloudFuture); ok {
-		debug(fmt.Sprintf("Encoding stage ref %s", stageRef.completionID))
-		fmt.Printf("%s: %s\r\n", DatumTypeHeader, StageRefDatumHeader)
-		fmt.Printf("%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
-		fmt.Printf("%s: %s\r\n", StageIDHeader, stageRef.completionID)
-		fmt.Printf("\r\n")
-		buf.WriteTo(os.Stdout)
-		return
-	} else if err != nil {
-		debug(fmt.Sprintf("Encoding error %s", err.Error()))
-		errMsg := err.Error()
-		buf = encodeGob(&errMsg)
-		status = FailureHeaderValue
-	} else {
-		debug(fmt.Sprintf("Encoding result %v", result))
-		buf = encodeGob(result)
-		status = SuccessHeaderValue
-	}
-	fmt.Printf("Content-Length: %d\r\n", buf.Len())
-	fmt.Printf("%s: blob\r\n", DatumTypeHeader)
-	fmt.Printf("%s: %s\r\n", ResultStatusHeader, status)
-	fmt.Printf("\r\n")
-
-	buf.WriteTo(os.Stdout)
+func writeContinuationResponse(result interface{}) {
+	encodeVal(result)
 }

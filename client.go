@@ -202,6 +202,7 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, val interf
 	}
 	defer res.Body.Close()
 
+	debug(fmt.Sprintf("Getting stage value of type %s", res.Header.Get(DatumTypeHeader)))
 	result := &futureResult{}
 	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
 		debug("Decoding failed result")

@@ -119,7 +119,11 @@ func handleContinuation(codec codec) {
 	}
 
 	result, err := invoke(decoded[0], decoded[1:]...)
-	writeContinuationResponse(result, err)
+	if err != nil {
+		writeContinuationResponse(err)
+	} else {
+		writeContinuationResponse(result)
+	}
 }
 
 func decodeContinuation(reader io.Reader) interface{} {
