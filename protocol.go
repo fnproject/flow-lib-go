@@ -181,31 +181,6 @@ func encodeGob(value interface{}) *bytes.Buffer {
 	return &buf
 }
 
-func decodeGob(r io.Reader, val interface{}) {
-	dec := gob.NewDecoder(r)
-	if err := dec.Decode(val); err != nil {
-		panic("Failed to decode gob: " + err.Error())
-	}
-}
-
-func decodeTypedGob(r io.Reader, t reflect.Type) interface{} {
-	dec := gob.NewDecoder(r)
-	var v reflect.Value
-	if t.Kind() == reflect.Ptr {
-		v = reflect.New(t.Elem())
-	} else {
-		v = reflect.New(t)
-	}
-	if err := dec.Decode(v.Interface()); err != nil {
-		panic("Failed to decode gob: " + err.Error())
-	}
-
-	if t.Kind() == reflect.Ptr {
-		return v.Interface()
-	}
-	return v.Elem().Interface()
-}
-
 func continuationArgTypes(continuation interface{}) (argTypes []reflect.Type) {
 	if reflect.TypeOf(continuation).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
@@ -228,23 +203,5 @@ func decodeContinuationArg(continuation interface{}, argIndex int, reader io.Rea
 	if len(argTypes) < argIndex {
 		panic("Invalid number of arguments decoded for continuation")
 	}
-	return decodeArg(argTypes[argIndex], reader, header)
-}
-
-func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) interface{} {
-	switch header.Get(ContentTypeHeader) {
-	case GobMediaHeader:
-		return decodeTypedGob(reader, t)
-	default:
-		panic("Unkown content type for blob")
-	}
-}
-
-func decodeValueBlob(val interface{}, reader io.Reader, header *textproto.MIMEHeader) {
-	switch header.Get(ContentTypeHeader) {
-	case GobMediaHeader:
-		decodeGob(reader, val)
-	default:
-		panic("Unkown content type for blob")
-	}
+	return decodeDatum(argTypes[argIndex], reader, header)
 }

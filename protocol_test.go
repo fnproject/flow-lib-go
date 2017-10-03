@@ -12,13 +12,13 @@ import (
 func TestEncodeAndDecodeGob(t *testing.T) {
 	buf := encodeGob(25)
 	var result int
-	decodeGob(buf, &result)
+	result = decodeGob(buf, reflect.TypeOf(result)).(int)
 	assert.Equal(t, 25, result)
 }
 
 func TestEncodeAndDecodeGobInterface(t *testing.T) {
 	buf := encodeGob(25)
-	result := decodeTypedGob(buf, reflect.TypeOf(25))
+	result := decodeGob(buf, reflect.TypeOf(25))
 	assert.Equal(t, 25, result)
 }
 

@@ -3,6 +3,7 @@ package completions
 import (
 	"fmt"
 	"net/textproto"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -95,7 +96,7 @@ func TestDecodeArgWithStruct(t *testing.T) {
 func TestEncodeDecodeGob(t *testing.T) {
 	e := encodeGob("foo")
 	var d string
-	decodeGob(e, &d)
+	d = decodeGob(e, reflect.TypeOf(d)).(string)
 	assert.Equal(t, "foo", d)
 }
 

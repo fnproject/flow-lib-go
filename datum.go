@@ -1,6 +1,7 @@
 package completions
 
 import (
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
@@ -14,11 +15,11 @@ import (
 
 type datum interface {
 	Encode(val interface{}) bool
-	DecodeArg(reflect.Type, io.Reader, *textproto.MIMEHeader) (interface{}, bool)
+	Decode(reflect.Type, io.Reader, *textproto.MIMEHeader) (interface{}, bool)
 }
 
-func encodeResult(val interface{}) {
-	debug(fmt.Sprintf("Encoding response of go type %v", reflect.TypeOf(val)))
+func encodeDatum(val interface{}) {
+	debug(fmt.Sprintf("Encoding datum of go type %v", reflect.TypeOf(val)))
 	for _, t := range datumTypes {
 		if t.Encode(val) {
 			debug(fmt.Sprintf("Encoding result with datum type %v", reflect.TypeOf(t)))
@@ -28,10 +29,10 @@ func encodeResult(val interface{}) {
 	panic("Failed to find suitable datum type to encode response")
 }
 
-func decodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) interface{} {
-	debug(fmt.Sprintf("Decoding arg of datum type %s", header.Get(DatumTypeHeader)))
+func decodeDatum(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) interface{} {
+	debug(fmt.Sprintf("Decoding datum of type %s", header.Get(DatumTypeHeader)))
 	for _, t := range datumTypes {
-		if res, ok := t.DecodeArg(argType, reader, header); ok {
+		if res, ok := t.Decode(argType, reader, header); ok {
 			debug(fmt.Sprintf("Decoded result with datum type %v", reflect.TypeOf(t)))
 			return res
 		}
@@ -55,7 +56,7 @@ func (d *emptyDatum) Encode(val interface{}) bool {
 	return true
 }
 
-func (d *emptyDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
+func (d *emptyDatum) Decode(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
 	if header.Get(DatumTypeHeader) != EmptyDatumHeader {
 		return nil, false
 	}
@@ -65,6 +66,19 @@ func (d *emptyDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *t
 type blobDatum struct{}
 
 func (d *blobDatum) Encode(val interface{}) bool {
+	// errors are encoded as string blob datums
+	if err, isErr := val.(error); isErr {
+		buf := encodeGob(err.Error())
+		fmt.Printf("HTTP/1.1 200\r\n")
+		fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
+		fmt.Printf("Content-Length: %d\r\n", buf.Len())
+		fmt.Printf("%s: %s\r\n", DatumTypeHeader, BlobDatumHeader)
+		fmt.Printf("%s: %s\r\n", ResultStatusHeader, FailureHeaderValue)
+		fmt.Printf("\r\n")
+		buf.WriteTo(os.Stdout)
+		return true
+	}
+
 	buf := encodeGob(val)
 	fmt.Printf("HTTP/1.1 200\r\n")
 	fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
@@ -76,32 +90,31 @@ func (d *blobDatum) Encode(val interface{}) bool {
 	return true
 }
 
-func (d *blobDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
+func (d *blobDatum) Decode(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
 	if header.Get(DatumTypeHeader) != BlobDatumHeader {
 		return nil, false
 	}
-	return decodeBlob(argType, reader, header), true
+	switch header.Get(ContentTypeHeader) {
+	case GobMediaHeader:
+		// we use gobs for encoding errors as strings
+		if header.Get(ResultStatusHeader) == FailureHeaderValue {
+			errString := decodeGob(reader, argType).(string)
+			return errors.New(errString), true
+		}
+		return decodeGob(reader, argType), true
+	default:
+		panic("Unkown content type for blob")
+	}
 }
 
 type errorDatum struct{}
 
 func (d *errorDatum) Encode(val interface{}) bool {
-	if e, ok := val.(error); ok {
-		errMsg := e.Error()
-		buf := encodeGob(&errMsg)
-		fmt.Printf("HTTP/1.1 200\r\n")
-		fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
-		fmt.Printf("Content-Length: %d\r\n", buf.Len())
-		fmt.Printf("%s: %s\r\n", DatumTypeHeader, BlobDatumHeader)
-		fmt.Printf("%s: %s\r\n", ResultStatusHeader, FailureHeaderValue)
-		fmt.Printf("\r\n")
-		buf.WriteTo(os.Stdout)
-		return true
-	}
+	// error datums are only currently generated on the server-side
 	return false
 }
 
-func (d *errorDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
+func (d *errorDatum) Decode(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
 	if header.Get(DatumTypeHeader) != ErrorDatumHeader {
 		return nil, false
 	}
@@ -132,7 +145,7 @@ func (d *stageDatum) Encode(val interface{}) bool {
 	return false
 }
 
-func (d *stageDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
+func (d *stageDatum) Decode(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
 	if header.Get(DatumTypeHeader) != StageRefDatumHeader {
 		return nil, false
 	}
@@ -149,7 +162,7 @@ func (d *httpReqDatum) Encode(val interface{}) bool {
 	return false
 }
 
-func (d *httpReqDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
+func (d *httpReqDatum) Decode(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
 	if header.Get(DatumTypeHeader) != HTTPReqDatumHeader {
 		return nil, false
 	}
@@ -180,7 +193,7 @@ func (d *httpRespDatum) Encode(val interface{}) bool {
 	return false
 }
 
-func (d *httpRespDatum) DecodeArg(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
+func (d *httpRespDatum) Decode(argType reflect.Type, reader io.Reader, header *textproto.MIMEHeader) (interface{}, bool) {
 	if header.Get(DatumTypeHeader) != HTTPRespDatumHeader {
 		return nil, false
 	}
@@ -204,4 +217,22 @@ func (d *httpRespDatum) DecodeArg(argType reflect.Type, reader io.Reader, header
 		Body:       body,
 		Headers:    headers,
 	}, true
+}
+
+func decodeGob(r io.Reader, t reflect.Type) interface{} {
+	dec := gob.NewDecoder(r)
+	var v reflect.Value
+	if t.Kind() == reflect.Ptr {
+		v = reflect.New(t.Elem())
+	} else {
+		v = reflect.New(t)
+	}
+	if err := dec.Decode(v.Interface()); err != nil {
+		panic("Failed to decode gob: " + err.Error())
+	}
+
+	if t.Kind() == reflect.Ptr {
+		return v.Interface()
+	}
+	return v.Elem().Interface()
 }
