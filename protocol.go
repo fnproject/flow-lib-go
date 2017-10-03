@@ -239,3 +239,12 @@ func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) 
 		panic("Unkown content type for blob")
 	}
 }
+
+func decodeValueBlob(val interface{}, reader io.Reader, header *textproto.MIMEHeader) {
+	switch header.Get(ContentTypeHeader) {
+	case GobMediaHeader:
+		decodeGob(reader, val)
+	default:
+		panic("Unkown content type for blob")
+	}
+}

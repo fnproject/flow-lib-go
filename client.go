@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -38,7 +39,8 @@ type completionID string
 type completerClient interface {
 	createThread(fid string) threadID
 	commit(tid threadID)
-	getAsync(ftid threadID, cid completionID, val interface{}) chan FutureResult
+	getAsync(tid threadID, cid completionID, val interface{}) chan FutureResult
+	getAsyncTyped(tid threadID, cid completionID, rType reflect.Type) chan FutureResult
 	completedValue(tid threadID, value interface{}, loc *codeLoc) completionID
 	delay(tid threadID, duration time.Duration, loc *codeLoc) completionID
 	supply(tid threadID, fn interface{}, loc *codeLoc) completionID
@@ -191,6 +193,38 @@ func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, val i
 	ch := make(chan FutureResult)
 	go cs.get(tid, cid, val, ch)
 	return ch
+}
+
+func (cs *completerServiceClient) getAsyncTyped(tid threadID, cid completionID, rType reflect.Type) chan FutureResult {
+	ch := make(chan FutureResult)
+	go cs.getTyped(tid, cid, rType, ch)
+	return ch
+}
+
+func (cs *completerServiceClient) getTyped(tid threadID, cid completionID, rType reflect.Type, ch chan FutureResult) {
+	debug(fmt.Sprintf("Getting result for stage %s and thread %s", cid, tid))
+	req := cs.protocol.getStageReq(tid, cid)
+	res, err := hc.Do(req)
+	if err != nil {
+		panic("Failed request: " + err.Error())
+	}
+	defer res.Body.Close()
+	debug(fmt.Sprintf("Getting stage value of type %s", res.Header.Get(DatumTypeHeader)))
+	result := &futureResult{}
+	if res.Header.Get(ResultStatusHeader) == FailureHeaderValue {
+		debug("Decoding failed result")
+		errType := res.Header.Get(ErrorTypeHeader)
+		debug(fmt.Sprintf("Processing error of type %s", errType))
+		if readBytes, readError := ioutil.ReadAll(res.Body); readError == nil {
+			result.err = errors.New(string(readBytes))
+		} else {
+			result.err = errors.New("Unknown error")
+		}
+	} else {
+		debug("Decoding successful result")
+		result.value = decodeTypedGob(res.Body, rType)
+	}
+	ch <- result
 }
 
 func (cs *completerServiceClient) get(tid threadID, cid completionID, val interface{}, ch chan FutureResult) {

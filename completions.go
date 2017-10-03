@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -145,10 +146,15 @@ type cloudThread struct {
 type cloudFuture struct {
 	*cloudThread
 	completionID completionID
+	returnType   reflect.Type
 }
 
 func (ct *cloudThread) newCloudFuture(cid completionID) CloudFuture {
 	return &cloudFuture{cloudThread: ct, completionID: cid}
+}
+
+func (ct *cloudThread) newTypedCloudFuture(cid completionID, rType reflect.Type) CloudFuture {
+	return &cloudFuture{cloudThread: ct, completionID: cid, returnType: rType}
 }
 
 // wraps result to runtime.Caller()
@@ -174,8 +180,16 @@ func (ct *cloudThread) commit() {
 	ct.completer.commit(ct.threadID)
 }
 
+func returnTypeForFunc(fn interface{}) reflect.Type {
+	t := reflect.ValueOf(fn).Type()
+	if t.NumOut() > 0 {
+		return t.Out(0)
+	}
+	return nil
+}
+
 func (ct *cloudThread) Supply(function interface{}) CloudFuture {
-	return ct.newCloudFuture(ct.completer.supply(ct.threadID, function, newCodeLoc()))
+	return ct.newTypedCloudFuture(ct.completer.supply(ct.threadID, function, newCodeLoc()), returnTypeForFunc(function))
 }
 
 func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
@@ -234,9 +248,13 @@ func (cf *cloudFuture) Get(result interface{}) chan FutureResult {
 	return cf.completer.getAsync(cf.threadID, cf.completionID, result)
 }
 
+func (cf *cloudFuture) GetTyped() chan FutureResult {
+	return cf.completer.getAsyncTyped(cf.threadID, cf.completionID, cf.returnType)
+}
+
 func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
 	cid := cf.completer.thenApply(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid, returnType: returnTypeForFunc(function)}
 }
 
 func (cf *cloudFuture) ThenCompose(function interface{}) CloudFuture {

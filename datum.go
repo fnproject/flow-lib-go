@@ -17,7 +17,7 @@ type datum interface {
 	DecodeArg(reflect.Type, io.Reader, *textproto.MIMEHeader) (interface{}, bool)
 }
 
-func encodeResponse(val interface{}) {
+func encodeResult(val interface{}) {
 	debug(fmt.Sprintf("Encoding response of go type %v", reflect.TypeOf(val)))
 	for _, t := range datumTypes {
 		if t.Encode(val) {
