@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/textproto"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -226,85 +223,12 @@ func continuationArgTypes(continuation interface{}) (argTypes []reflect.Type) {
 	return
 }
 
-func decodeArg(continuation interface{}, argIndex int, reader io.Reader, header *textproto.MIMEHeader) interface{} {
+func decodeContinuationArg(continuation interface{}, argIndex int, reader io.Reader, header *textproto.MIMEHeader) interface{} {
 	argTypes := continuationArgTypes(continuation)
 	if len(argTypes) < argIndex {
 		panic("Invalid number of arguments decoded for continuation")
 	}
-	datumType := header.Get(DatumTypeHeader)
-	debug(fmt.Sprintf("Decoding arg of type %s", datumType))
-	switch datumType {
-	case BlobDatumHeader:
-		return decodeBlob(argTypes[argIndex], reader, header)
-	case EmptyDatumHeader:
-		return nil
-	case ErrorDatumHeader:
-		errType := header.Get(ErrorTypeHeader)
-		debug(fmt.Sprintf("Processing error of type %s", errType))
-		errMsg := "Unknown error details"
-		if readBytes, readError := ioutil.ReadAll(reader); readError == nil {
-			errMsg = string(readBytes)
-		}
-		if errType != "" {
-			errMsg = fmt.Sprintf("%s: %s", errType, errMsg)
-		}
-		return errors.New(errMsg)
-
-	case StageRefDatumHeader:
-		stageID := header.Get(StageIDHeader)
-		return cloudFuture{completionID: completionID(stageID)}
-
-	case HTTPReqDatumHeader:
-		method := header.Get(MethodHeader)
-		if method == "" {
-			method = http.MethodPost
-		}
-
-		body, bodyErr := ioutil.ReadAll(reader)
-		if bodyErr == nil {
-			panic("Failed to read body of HTTP response")
-		}
-
-		headers := http.Header{}
-		for k, values := range *header {
-			for _, v := range values {
-				headers.Set(k, v)
-			}
-		}
-
-		return HTTPRequest{
-			Method:  method,
-			Body:    body,
-			Headers: headers,
-		}
-
-	case HTTPRespDatumHeader:
-		code := header.Get(ResultCodeHeader)
-		statusCode, statusErr := strconv.Atoi(code)
-		if statusErr != nil {
-			panic("Invalid result code for HTTP response: " + code)
-		}
-
-		body, bodyErr := ioutil.ReadAll(reader)
-		if bodyErr == nil {
-			panic("Failed to read body of HTTP response")
-		}
-
-		headers := http.Header{}
-		for k, values := range *header {
-			for _, v := range values {
-				headers.Set(k, v)
-			}
-		}
-		return HTTPResponse{
-			StatusCode: statusCode,
-			Body:       body,
-			Headers:    headers,
-		}
-
-	default:
-		panic("Unkown content type in http multipart")
-	}
+	return decodeArg(argTypes[argIndex], reader, header)
 }
 
 func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) interface{} {
@@ -314,8 +238,4 @@ func decodeBlob(t reflect.Type, reader io.Reader, header *textproto.MIMEHeader) 
 	default:
 		panic("Unkown content type for blob")
 	}
-}
-
-func writeContinuationResponse(result interface{}) {
-	encodeVal(result)
 }

@@ -42,20 +42,20 @@ func TestContinuationTypesExceedsArgs(t *testing.T) {
 }
 
 func TestDecodeContinuationArgsWithOneGob(t *testing.T) {
-	arg := decodeArg(withOneArg, 0, encodeGob("foo"), gobHeaders())
+	arg := decodeContinuationArg(withOneArg, 0, encodeGob("foo"), gobHeaders())
 	assert.Equal(t, "foo", arg)
 }
 
 func TestDecodeContinuationArgsWithTwoGobs(t *testing.T) {
-	arg := decodeArg(withTwoArgs, 0, encodeGob("foo"), gobHeaders())
+	arg := decodeContinuationArg(withTwoArgs, 0, encodeGob("foo"), gobHeaders())
 	assert.Equal(t, "foo", arg)
-	arg = decodeArg(withTwoArgs, 1, encodeGob(25), gobHeaders())
+	arg = decodeContinuationArg(withTwoArgs, 1, encodeGob(25), gobHeaders())
 	assert.IsType(t, 25, arg)
 }
 
 func TestDecodeContinuationArgsThatFails(t *testing.T) {
 	assert.Panics(t, func() {
-		decodeArg(withOneArg, 2, encodeGob(25), gobHeaders())
+		decodeContinuationArg(withOneArg, 2, encodeGob(25), gobHeaders())
 	})
 }
 

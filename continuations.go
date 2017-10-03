@@ -108,7 +108,7 @@ func handleContinuation(codec codec) {
 				val = decodeContinuation(p)
 			} else {
 				debug(fmt.Sprintf("Unmarshalling arg %d", len(decoded)))
-				val = decodeArg(decoded[0], len(decoded)-1, p, &p.Header)
+				val = decodeContinuationArg(decoded[0], len(decoded)-1, p, &p.Header)
 			}
 			decoded = append(decoded, val)
 		}
@@ -119,10 +119,11 @@ func handleContinuation(codec codec) {
 	}
 
 	result, err := invoke(decoded[0], decoded[1:]...)
+	// stages can only receive one value for a completion
 	if err != nil {
-		writeContinuationResponse(err)
+		encodeResponse(err)
 	} else {
-		writeContinuationResponse(result)
+		encodeResponse(result)
 	}
 }
 
