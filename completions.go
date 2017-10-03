@@ -2,6 +2,7 @@ package completions
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"runtime"
@@ -87,9 +88,7 @@ func lookupEnv(key string) (string, bool) {
 }
 
 type CloudThread interface {
-	// InvokeFunction(functionID string, method HTTPMethod, headers Headers, data byte[]) CloudFuture
-	// InvokeFunction(functionID string, method HTTPMethod, headers Headers) CloudFuture
-	// InvokeFunction(functionID string, method HTTPMethod) CloudFuture
+	InvokeFunction(functionID string, req HTTPRequest) CloudFuture
 	Supply(function interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
 	CompletedValue(value interface{}) CloudFuture // value of error indicates failed future
@@ -123,6 +122,18 @@ type ExternalCloudFuture interface {
 	CloudFuture
 	CompletionURL() *url.URL
 	FailURL() *url.URL
+}
+
+type HTTPRequest struct {
+	Headers http.Header
+	Method  string
+	Body    []byte
+}
+
+type HTTPResponse struct {
+	StatusCode int
+	Headers    http.Header
+	Body       []byte
 }
 
 type cloudThread struct {
@@ -173,6 +184,10 @@ func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
 
 func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
 	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()))
+}
+
+func (ct *cloudThread) InvokeFunction(functionID string, req HTTPRequest) CloudFuture {
+	return ct.newCloudFuture(ct.completer.invokeFunction(ct.threadID, functionID, req, newCodeLoc()))
 }
 
 type externalCloudFuture struct {

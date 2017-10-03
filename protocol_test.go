@@ -68,7 +68,7 @@ func TestCompletedValueReqWithSuccess(t *testing.T) {
 
 func TestCompletedValueReqWithError(t *testing.T) {
 	req := cp.completedValueReq("tid", errors.New("foo"))
-	assert.Equal(t, SuccessHeaderValue, req.Header.Get(ResultStatusHeader))
+	assert.Equal(t, FailureHeaderValue, req.Header.Get(ResultStatusHeader))
 }
 
 func gobHeaders() *textproto.MIMEHeader {

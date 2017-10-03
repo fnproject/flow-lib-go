@@ -51,9 +51,7 @@ type completerClient interface {
 	applyToEither(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID
 	thenAcceptBoth(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID
 	createExternalCompletion(tid threadID, loc *codeLoc) *externalCompletion
-
-	// TODO
-	// invokeFunction(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
+	invokeFunction(tid threadID, functionID string, req HTTPRequest, loc *codeLoc) completionID
 	allOf(tid threadID, cids []completionID, loc *codeLoc) completionID
 	anyOf(tid threadID, cids []completionID, loc *codeLoc) completionID
 	handle(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
@@ -164,6 +162,11 @@ func (cs *completerServiceClient) createExternalCompletion(tid threadID, loc *co
 		panic("Failed to parse failURL")
 	}
 	return &externalCompletion{cid: cid, completionURL: cURL, failURL: fURL}
+}
+
+func (cs *completerServiceClient) invokeFunction(tid threadID, functionID string, req HTTPRequest, loc *codeLoc) completionID {
+	URL := cs.protocol.rootStageURL("invokeFunction", tid)
+	return cs.addStage(cs.protocol.invokeFunction(URL, loc, req))
 }
 
 func (cs *completerServiceClient) delay(tid threadID, duration time.Duration, loc *codeLoc) completionID {
