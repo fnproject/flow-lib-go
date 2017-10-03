@@ -222,7 +222,7 @@ func (d *httpRespDatum) Decode(argType reflect.Type, reader io.Reader, header *t
 
 func decodeGob(r io.Reader, t reflect.Type) interface{} {
 	if t == nil {
-		// use GetAsType(reflect.Type)
+		// use GetType(reflect.Type)
 		panic("Decode type could not be inferred")
 	}
 	dec := gob.NewDecoder(r)

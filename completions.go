@@ -106,7 +106,7 @@ type FutureResult interface {
 type CloudFuture interface {
 	Get() chan FutureResult
 	// Get result as the given type. E.g. for use with ThenCompose
-	GetAsType(t reflect.Type) chan FutureResult
+	GetType(t reflect.Type) chan FutureResult
 	ThenApply(function interface{}) CloudFuture
 	ThenCompose(function interface{}) CloudFuture
 	ThenCombine(other CloudFuture, function interface{}) CloudFuture
@@ -252,7 +252,7 @@ func (cf *cloudFuture) Get() chan FutureResult {
 	return cf.completer.getAsync(cf.threadID, cf.completionID, cf.returnType)
 }
 
-func (cf *cloudFuture) GetAsType(t reflect.Type) chan FutureResult {
+func (cf *cloudFuture) GetType(t reflect.Type) chan FutureResult {
 	return cf.completer.getAsync(cf.threadID, cf.completionID, t)
 }
 
