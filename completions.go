@@ -105,6 +105,8 @@ type FutureResult interface {
 
 type CloudFuture interface {
 	Get() chan FutureResult
+	// Get result as the given type. E.g. for use with ThenCompose
+	GetAsType(t reflect.Type) chan FutureResult
 	ThenApply(function interface{}) CloudFuture
 	ThenCompose(function interface{}) CloudFuture
 	ThenCombine(other CloudFuture, function interface{}) CloudFuture
@@ -189,7 +191,8 @@ func returnTypeForFunc(fn interface{}) reflect.Type {
 }
 
 func (ct *cloudThread) Supply(function interface{}) CloudFuture {
-	return ct.newTypedCloudFuture(ct.completer.supply(ct.threadID, function, newCodeLoc()), returnTypeForFunc(function))
+	return ct.newTypedCloudFuture(ct.completer.supply(ct.threadID, function, newCodeLoc()),
+		returnTypeForFunc(function))
 }
 
 func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
@@ -197,7 +200,8 @@ func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
 }
 
 func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
-	return ct.newCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()))
+	return ct.newTypedCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()),
+		reflect.TypeOf(value))
 }
 
 func (ct *cloudThread) InvokeFunction(functionID string, req HTTPRequest) CloudFuture {
@@ -246,6 +250,10 @@ func (ct *cloudThread) AnyOf(futures ...CloudFuture) CloudFuture {
 
 func (cf *cloudFuture) Get() chan FutureResult {
 	return cf.completer.getAsync(cf.threadID, cf.completionID, cf.returnType)
+}
+
+func (cf *cloudFuture) GetAsType(t reflect.Type) chan FutureResult {
+	return cf.completer.getAsync(cf.threadID, cf.completionID, t)
 }
 
 func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
