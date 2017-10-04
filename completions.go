@@ -54,7 +54,6 @@ func WithFlow(fn func()) {
 		return
 	}
 	initFlow(codec, true)
-	debug(fmt.Sprintf("Created new flow %s", cf.flowID))
 	defer cf.commit()
 	debug("Invoking user's main flow function")
 	fn()
@@ -66,8 +65,10 @@ func initFlow(codec codec, shouldCreate bool) {
 	var flowID flowID
 	if shouldCreate {
 		flowID = completer.createFlow(getFunctionID(codec))
+		debug(fmt.Sprintf("Created new flow %s", cf.flowID))
 	} else {
 		flowID = codec.getFlowID()
+		debug(fmt.Sprintf("Awakened flow %s", cf.flowID))
 	}
 	cfMtx.Lock()
 	defer cfMtx.Unlock()
