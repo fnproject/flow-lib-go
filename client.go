@@ -165,7 +165,7 @@ func (cs *completerServiceClient) createExternalCompletion(tid threadID, loc *co
 }
 
 func (cs *completerServiceClient) invokeFunction(tid threadID, functionID string, req *HTTPRequest, loc *codeLoc) completionID {
-	URL := cs.protocol.rootStageURL("invokeFunction", tid)
+	URL := fmt.Sprintf("%s?functionId=%s", cs.protocol.rootStageURL("invokeFunction", tid), functionID)
 	return cs.addStage(cs.protocol.invokeFunction(URL, loc, req))
 }
 

@@ -41,7 +41,7 @@ func decodeDatum(argType reflect.Type, reader io.Reader, header *textproto.MIMEH
 }
 
 // datum types in order of priority
-var datumTypes = []datum{new(emptyDatum), new(errorDatum), new(stageDatum), new(blobDatum)}
+var datumTypes = []datum{new(emptyDatum), new(errorDatum), new(stageDatum), new(httpReqDatum), new(httpRespDatum), new(blobDatum)}
 
 type emptyDatum struct{}
 
@@ -172,7 +172,7 @@ func (d *httpReqDatum) Decode(argType reflect.Type, reader io.Reader, header *te
 		method = http.MethodPost
 	}
 	body, bodyErr := ioutil.ReadAll(reader)
-	if bodyErr == nil {
+	if bodyErr != nil {
 		panic("Failed to read body of HTTP response")
 	}
 	headers := http.Header{}
@@ -181,7 +181,10 @@ func (d *httpReqDatum) Decode(argType reflect.Type, reader io.Reader, header *te
 			headers.Set(k, v)
 		}
 	}
-	return HTTPRequest{
+	if header.Get(ResultStatusHeader) == FailureHeaderValue {
+		return errors.New(string(body)), true
+	}
+	return &HTTPRequest{
 		Method:  method,
 		Body:    body,
 		Headers: headers,
@@ -204,7 +207,7 @@ func (d *httpRespDatum) Decode(argType reflect.Type, reader io.Reader, header *t
 		panic("Invalid result code for HTTP response: " + code)
 	}
 	body, bodyErr := ioutil.ReadAll(reader)
-	if bodyErr == nil {
+	if bodyErr != nil {
 		panic("Failed to read body of HTTP response")
 	}
 	headers := http.Header{}
@@ -213,7 +216,10 @@ func (d *httpRespDatum) Decode(argType reflect.Type, reader io.Reader, header *t
 			headers.Set(k, v)
 		}
 	}
-	return HTTPResponse{
+	if header.Get(ResultStatusHeader) == FailureHeaderValue {
+		return errors.New(string(body)), true
+	}
+	return &HTTPResponse{
 		StatusCode: statusCode,
 		Body:       body,
 		Headers:    headers,
