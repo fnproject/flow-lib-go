@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	flows "github.com/gviedma/flow-lib-go"
+	flows "github.com/fnproject/flow-lib-go"
 )
 
 func init() {

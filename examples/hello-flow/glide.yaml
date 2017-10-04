@@ -1,4 +1,4 @@
-package: github.com/gviedma/flow-lib-go/hello-flow
+package: github.com/fnproject/flow-lib-go/hello-flow
 import:
-- package: github.com/gviedma/flow-lib-go
+- package: github.com/fnproject/flow-lib-go
   version: origin/master

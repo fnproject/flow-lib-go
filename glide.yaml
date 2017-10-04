@@ -1,4 +1,4 @@
-package: github.com/gviedma/flow-lib-go
+package: github.com/fnproject/flow-lib-go
 import:
 - package: github.com/stretchr/testify
   version: v1.1.4

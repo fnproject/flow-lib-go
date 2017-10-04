@@ -8,7 +8,7 @@ Simply import this library into your go application, deploy it on fn, and start 
 package main
 
 import (
-	flows "github.com/gviedma/flow-lib-go"
+	flows "github.com/fnproject/flow-lib-go"
 )
 
 func init() {
