@@ -33,7 +33,7 @@ $ docker run --rm  \
 
 Deploy the example application to the functions server:
 ```
-made dep-up
+make dep-up
 make deploy
 ```
 
@@ -43,3 +43,4 @@ You are now ready to invoke the example:
 ```
 fn call go-flow hello-flow/
 ```
+You should be able to see the following output: _GOT RESULT foo_
