@@ -1,0 +1,7 @@
+name: example/go-flow
+version: 0.0.359
+runtime: go
+entrypoint: ./func
+path: /hello-flow
+expects:
+  config: []

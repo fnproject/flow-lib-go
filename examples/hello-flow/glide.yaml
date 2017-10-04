@@ -1,0 +1,4 @@
+package: github.com/gviedma/flow-lib-go/hello-flow
+import:
+- package: github.com/gviedma/flow-lib-go
+  version: origin/master
