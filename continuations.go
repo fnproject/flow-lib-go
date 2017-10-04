@@ -1,4 +1,4 @@
-package completions
+package flows
 
 import (
 	"encoding/json"
@@ -14,8 +14,8 @@ import (
 	"sync"
 )
 
-var cMutex = &sync.Mutex{} // guards access to cFunctions
-var cFunctions = make(map[cKey]interface{})
+var actionsMtx = &sync.Mutex{} // guards access to cActions
+var actions = make(map[string]interface{})
 
 func invoke(continuation interface{}, args ...interface{}) (result interface{}, err error) {
 	// catch panics and return them as errors
@@ -73,25 +73,25 @@ func invokeContinuation(continuation interface{}, args ...interface{}) []reflect
 	return fn.Call(rargs)
 }
 
-type cKey string
-
-func continuationKey(c interface{}) cKey {
-	return cKey(runtime.FuncForPC(reflect.ValueOf(c).Pointer()).Name())
+func getActionID(action interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name()
 }
 
-func RegisterContinuation(function interface{}) {
-	if reflect.TypeOf(function).Kind() != reflect.Func {
-		panic("Continuation must be a function!")
+// registers a go function so it can be used as an action
+// in a flow stage
+func RegisterAction(action interface{}) {
+	if reflect.TypeOf(action).Kind() != reflect.Func {
+		panic("Action must be a function!")
 	}
-	cMutex.Lock()
-	defer cMutex.Unlock()
-	cFunctions[continuationKey(function)] = function
+	actionsMtx.Lock()
+	defer actionsMtx.Unlock()
+	actions[getActionID(action)] = action
 }
 
-func invokeFromRegistry(key string, args ...interface{}) (interface{}, error) {
-	cMutex.Lock()
-	defer cMutex.Unlock()
-	if e, ok := cFunctions[cKey(key)]; !ok {
+func invokeFromRegistry(actionID string, args ...interface{}) (interface{}, error) {
+	actionsMtx.Lock()
+	defer actionsMtx.Unlock()
+	if e, ok := actions[actionID]; !ok {
 		panic("Continuation not registered")
 	} else {
 		return invoke(e, args...)
@@ -148,13 +148,13 @@ func decodeContinuation(reader io.Reader) interface{} {
 	if err := json.NewDecoder(reader).Decode(&ref); err != nil {
 		panic("Failed to decode continuation")
 	}
-	cMutex.Lock()
-	defer cMutex.Unlock()
-	function, valid := cFunctions[ref.Key]
+	actionsMtx.Lock()
+	defer actionsMtx.Unlock()
+	action, valid := actions[ref.ID]
 	if !valid {
 		panic("Continuation not registered")
 	}
-	return function
+	return action
 }
 
 // from https://go-review.googlesource.com/c/go/+/22045/3/src/mime/multipart/multipart.go#99

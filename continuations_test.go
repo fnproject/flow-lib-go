@@ -1,4 +1,4 @@
-package completions
+package flows
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestContinuationReturnsErrorOnPanic(t *testing.T) {
-	RegisterContinuation(thatPanics)
+	RegisterAction(thatPanics)
 	// assert equality
 	result, err := invoke(thatPanics, 12)
 	assert.Equal(t, fmt.Errorf("this panicked"), err)
@@ -19,7 +19,7 @@ func TestContinuationReturnsErrorOnPanic(t *testing.T) {
 }
 
 func TestContinuationReturnsErrorOnBadArg(t *testing.T) {
-	RegisterContinuation(toUpperString)
+	RegisterAction(toUpperString)
 	// assert equality
 	result, err := invoke(toUpperString, 12)
 	assert.Error(t, err)
@@ -28,12 +28,12 @@ func TestContinuationReturnsErrorOnBadArg(t *testing.T) {
 
 func TestContinuationPanicsWithoutFunctionArg(t *testing.T) {
 	assert.Panics(t, func() {
-		RegisterContinuation("foo")
+		RegisterAction("foo")
 	})
 }
 
 func TestContinuationSuccess(t *testing.T) {
-	RegisterContinuation(toUpperString)
+	RegisterAction(toUpperString)
 	// assert equality
 	result, err := invoke(toUpperString, "foo")
 	assert.Equal(t, "FOO", result)
@@ -41,7 +41,7 @@ func TestContinuationSuccess(t *testing.T) {
 }
 
 func TestContinuationWithNilError(t *testing.T) {
-	RegisterContinuation(toUpperStringWithNilError)
+	RegisterAction(toUpperStringWithNilError)
 	// assert equality
 	result, err := invoke(toUpperStringWithNilError, "foo")
 	assert.Equal(t, "FOO", result)
@@ -49,7 +49,7 @@ func TestContinuationWithNilError(t *testing.T) {
 }
 
 func TestContinuationWithError(t *testing.T) {
-	RegisterContinuation(toUpperStringWithError)
+	RegisterAction(toUpperStringWithError)
 	// assert equality
 	result, err := invoke(toUpperStringWithError, "foo")
 	assert.Equal(t, fmt.Errorf("My error"), err)
@@ -100,9 +100,9 @@ func TestEncodeDecodeGob(t *testing.T) {
 	assert.Equal(t, "foo", d)
 }
 
-func TestContinuationKeyIsConstant(t *testing.T) {
-	k1 := continuationKey(TestContinuationKeyIsConstant)
-	k2 := continuationKey(TestContinuationKeyIsConstant)
+func TestActionIDIsConstant(t *testing.T) {
+	k1 := getActionID(TestActionIDIsConstant)
+	k2 := getActionID(TestActionIDIsConstant)
 	assert.Equal(t, k1, k2)
 }
 

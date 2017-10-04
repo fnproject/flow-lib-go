@@ -1,4 +1,4 @@
-package completions
+package flows
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ const (
 	// protocol headers
 	HeaderPrefix       = "FnProject-"
 	DatumTypeHeader    = HeaderPrefix + "Datumtype"
-	ThreadIDHeader     = HeaderPrefix + "FlowID"
+	FlowIDHeader       = HeaderPrefix + "FlowID"
 	StageIDHeader      = HeaderPrefix + "StageID"
 	ResultStatusHeader = HeaderPrefix + "ResultStatus"
 	ResultCodeHeader   = HeaderPrefix + "ResultCode"
@@ -57,26 +57,26 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 }
 
 type continuationRef struct {
-	Key cKey `json:"continuation-key"`
+	ID string `json:"action-id"`
 }
 
 func (cr *continuationRef) getKey() string {
-	return string(cr.Key)
+	return cr.ID
 }
 
-func newContinuationRef(function interface{}) *continuationRef {
-	return &continuationRef{Key: continuationKey(function)}
+func newContinuationRef(action interface{}) *continuationRef {
+	return &continuationRef{ID: getActionID(action)}
 }
 
-func (p *completerProtocol) parseThreadID(res *http.Response) threadID {
-	return threadID(res.Header.Get(ThreadIDHeader))
+func (p *completerProtocol) parseFlowID(res *http.Response) flowID {
+	return flowID(res.Header.Get(FlowIDHeader))
 }
 
-func (p *completerProtocol) parseStageID(res *http.Response) completionID {
-	return completionID(res.Header.Get(StageIDHeader))
+func (p *completerProtocol) parseStageID(res *http.Response) stageID {
+	return stageID(res.Header.Get(StageIDHeader))
 }
 
-func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
+func (p *completerProtocol) createFlowReq(functionID string) *http.Request {
 	url := fmt.Sprintf("%s/graph?functionId=%s", p.baseURL, functionID)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -85,8 +85,8 @@ func (p *completerProtocol) createThreadReq(functionID string) *http.Request {
 	return req
 }
 
-func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *http.Request {
-	URL := p.rootStageURL("completedValue", tid)
+func (p *completerProtocol) completedValueReq(fid flowID, value interface{}) *http.Request {
+	URL := p.rootStageURL("completedValue", fid)
 	var req *http.Request
 	if err, isErr := value.(error); isErr {
 		req = createRequest("POST", URL, strings.NewReader(err.Error()))
@@ -103,20 +103,20 @@ func (p *completerProtocol) completedValueReq(tid threadID, value interface{}) *
 	return req
 }
 
-func (p *completerProtocol) rootStageURL(op string, tid threadID) string {
-	return fmt.Sprintf("%s/graph/%s/%s", p.baseURL, tid, op)
+func (p *completerProtocol) rootStageURL(op string, fid flowID) string {
+	return fmt.Sprintf("%s/graph/%s/%s", p.baseURL, fid, op)
 }
 
-func (p *completerProtocol) chainedStageURL(op string, tid threadID, cid completionID) string {
-	return fmt.Sprintf("%s/graph/%s/stage/%s/%s", p.baseURL, tid, cid, op)
+func (p *completerProtocol) chainedStageURL(op string, fid flowID, sid stageID) string {
+	return fmt.Sprintf("%s/graph/%s/stage/%s/%s", p.baseURL, fid, sid, op)
 }
 
-func (p *completerProtocol) chained(op string, tid threadID, cid completionID, fn interface{}, loc *codeLoc) *http.Request {
-	return p.completionWithBody(p.chainedStageURL(op, tid, cid), fn, loc)
+func (p *completerProtocol) chained(op string, fid flowID, sid stageID, fn interface{}, loc *codeLoc) *http.Request {
+	return p.completionWithBody(p.chainedStageURL(op, fid, sid), fn, loc)
 }
 
-func (p *completerProtocol) chainedWithOther(op string, tid threadID, cid completionID, altCid completionID, fn interface{}, loc *codeLoc) *http.Request {
-	URL := fmt.Sprintf("%s/graph/%s/stage/%s/%s?other=%s", p.baseURL, tid, cid, op, string(altCid))
+func (p *completerProtocol) chainedWithOther(op string, fid flowID, sid stageID, altCid stageID, fn interface{}, loc *codeLoc) *http.Request {
+	URL := fmt.Sprintf("%s/graph/%s/stage/%s/%s?other=%s", p.baseURL, fid, sid, op, string(altCid))
 	return p.completionWithBody(URL, fn, loc)
 }
 
@@ -153,12 +153,12 @@ func (p *completerProtocol) completion(URL string, loc *codeLoc, r io.Reader) *h
 	return req
 }
 
-func (p *completerProtocol) getStageReq(tid threadID, cid completionID) *http.Request {
-	return createRequest("GET", fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, tid, cid), nil)
+func (p *completerProtocol) getStageReq(fid flowID, sid stageID) *http.Request {
+	return createRequest("GET", fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, fid, sid), nil)
 }
 
-func (p *completerProtocol) commit(tid threadID) *http.Request {
-	return createRequest("POST", fmt.Sprintf("%s/graph/%s/commit", p.baseURL, tid), nil)
+func (p *completerProtocol) commit(fid flowID) *http.Request {
+	return createRequest("POST", fmt.Sprintf("%s/graph/%s/commit", p.baseURL, fid), nil)
 }
 
 // panics if the request can't be created

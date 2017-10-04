@@ -1,4 +1,4 @@
-package completions
+package flows
 
 import (
 	"encoding/gob"
@@ -134,12 +134,12 @@ func (d *errorDatum) Decode(argType reflect.Type, reader io.Reader, header *text
 type stageDatum struct{}
 
 func (d *stageDatum) Encode(val interface{}) bool {
-	if cf, ok := val.(*cloudFuture); ok {
-		debug(fmt.Sprintf("Returning stage ref %s", cf.completionID))
+	if cf, ok := val.(*flowFuture); ok {
+		debug(fmt.Sprintf("Returning stage ref %s", cf.stageID))
 		fmt.Printf("HTTP/1.1 200\r\n")
 		fmt.Printf("%s: %s\r\n", DatumTypeHeader, StageRefDatumHeader)
 		fmt.Printf("%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
-		fmt.Printf("%s: %s\r\n", StageIDHeader, cf.completionID)
+		fmt.Printf("%s: %s\r\n", StageIDHeader, cf.stageID)
 		fmt.Printf("\r\n")
 		return true
 	}
@@ -150,10 +150,13 @@ func (d *stageDatum) Decode(argType reflect.Type, reader io.Reader, header *text
 	if header.Get(DatumTypeHeader) != StageRefDatumHeader {
 		return nil, false
 	}
-	stageID := header.Get(StageIDHeader)
-	return cloudFuture{
-		cloudThread:  CurrentThread().(*cloudThread),
-		completionID: completionID(stageID),
+	sid := header.Get(StageIDHeader)
+	if sid == "" {
+		panic("Missing stage ID header")
+	}
+	return flowFuture{
+		flow:    CurrentFlow().(*flow),
+		stageID: stageID(sid),
 	}, true
 }
 

@@ -1,4 +1,4 @@
-package completions
+package flows
 
 import (
 	"errors"
@@ -62,12 +62,12 @@ func TestDecodeContinuationArgsThatFails(t *testing.T) {
 var cp = completerProtocol{baseURL: "http://test.com"}
 
 func TestCompletedValueReqWithSuccess(t *testing.T) {
-	req := cp.completedValueReq("tid", "foo")
+	req := cp.completedValueReq("fid", "foo")
 	assert.Equal(t, SuccessHeaderValue, req.Header.Get(ResultStatusHeader))
 }
 
 func TestCompletedValueReqWithError(t *testing.T) {
-	req := cp.completedValueReq("tid", errors.New("foo"))
+	req := cp.completedValueReq("fid", errors.New("foo"))
 	assert.Equal(t, FailureHeaderValue, req.Header.Get(ResultStatusHeader))
 }
 

@@ -1,4 +1,4 @@
-package completions
+package flows
 
 import (
 	"fmt"
@@ -32,146 +32,146 @@ func newCompleterClient() completerClient {
 	}
 }
 
-type threadID string
-type completionID string
+type flowID string
+type stageID string
 
 type completerClient interface {
-	createThread(fid string) threadID
-	commit(tid threadID)
-	getAsync(tid threadID, cid completionID, rType reflect.Type) chan FutureResult
-	completedValue(tid threadID, value interface{}, loc *codeLoc) completionID
-	delay(tid threadID, duration time.Duration, loc *codeLoc) completionID
-	supply(tid threadID, fn interface{}, loc *codeLoc) completionID
-	thenApply(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	thenCompose(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	whenComplete(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	thenAccept(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	thenRun(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	acceptEither(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID
-	applyToEither(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID
-	thenAcceptBoth(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID
-	createExternalCompletion(tid threadID, loc *codeLoc) *externalCompletion
-	invokeFunction(tid threadID, functionID string, req *HTTPRequest, loc *codeLoc) completionID
-	allOf(tid threadID, cids []completionID, loc *codeLoc) completionID
-	anyOf(tid threadID, cids []completionID, loc *codeLoc) completionID
-	handle(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	exceptionally(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	exceptionallyCompose(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID
-	thenCombine(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID
+	createFlow(fid string) flowID
+	commit(fid flowID)
+	getAsync(fid flowID, sid stageID, rType reflect.Type) chan FutureResult
+	completedValue(fid flowID, value interface{}, loc *codeLoc) stageID
+	delay(fid flowID, duration time.Duration, loc *codeLoc) stageID
+	supply(fid flowID, fn interface{}, loc *codeLoc) stageID
+	thenApply(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	thenCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	whenComplete(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	thenAccept(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	thenRun(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	acceptEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
+	applyToEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
+	thenAcceptBoth(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
+	createExternalCompletion(fid flowID, loc *codeLoc) *externalCompletion
+	invokeFunction(fid flowID, functionID string, req *HTTPRequest, loc *codeLoc) stageID
+	allOf(fid flowID, sids []stageID, loc *codeLoc) stageID
+	anyOf(fid flowID, sids []stageID, loc *codeLoc) stageID
+	handle(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	exceptionally(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	exceptionallyCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
+	thenCombine(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
 }
 
 type completerServiceClient struct {
 	protocol *completerProtocol
 }
 
-func (cs *completerServiceClient) createThread(fid string) threadID {
-	res := cs.safeReq(cs.protocol.createThreadReq(fid))
-	return cs.protocol.parseThreadID(res)
+func (cs *completerServiceClient) createFlow(fid string) flowID {
+	res := cs.safeReq(cs.protocol.createFlowReq(fid))
+	return cs.protocol.parseFlowID(res)
 }
 
-func (cs *completerServiceClient) completedValue(tid threadID, value interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.completedValueReq(tid, value))
+func (cs *completerServiceClient) completedValue(fid flowID, value interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.completedValueReq(fid, value))
 }
 
-func (cs *completerServiceClient) supply(tid threadID, fn interface{}, loc *codeLoc) completionID {
-	URL := cs.protocol.rootStageURL("supply", tid)
+func (cs *completerServiceClient) supply(fid flowID, fn interface{}, loc *codeLoc) stageID {
+	URL := cs.protocol.rootStageURL("supply", fid)
 	return cs.addStage(cs.protocol.completionWithBody(URL, fn, loc))
 }
 
-func (cs *completerServiceClient) thenApply(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("thenApply", tid, cid, fn, loc))
+func (cs *completerServiceClient) thenApply(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("thenApply", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) thenCompose(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("thenCompose", tid, cid, fn, loc))
+func (cs *completerServiceClient) thenCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("thenCompose", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) whenComplete(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("whenComplete", tid, cid, fn, loc))
+func (cs *completerServiceClient) whenComplete(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("whenComplete", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) thenAccept(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("thenAccept", tid, cid, fn, loc))
+func (cs *completerServiceClient) thenAccept(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("thenAccept", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) thenRun(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("thenRun", tid, cid, fn, loc))
+func (cs *completerServiceClient) thenRun(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("thenRun", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) acceptEither(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chainedWithOther("acceptEither", tid, cid, alt, fn, loc))
+func (cs *completerServiceClient) acceptEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chainedWithOther("acceptEither", fid, sid, alt, fn, loc))
 }
 
-func (cs *completerServiceClient) applyToEither(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chainedWithOther("applyToEither", tid, cid, alt, fn, loc))
+func (cs *completerServiceClient) applyToEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chainedWithOther("applyToEither", fid, sid, alt, fn, loc))
 }
 
-func (cs *completerServiceClient) thenAcceptBoth(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chainedWithOther("thenAcceptBoth", tid, cid, alt, fn, loc))
+func (cs *completerServiceClient) thenAcceptBoth(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chainedWithOther("thenAcceptBoth", fid, sid, alt, fn, loc))
 }
 
-func (cs *completerServiceClient) thenCombine(tid threadID, cid completionID, alt completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chainedWithOther("thenCombine", tid, cid, alt, fn, loc))
+func (cs *completerServiceClient) thenCombine(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chainedWithOther("thenCombine", fid, sid, alt, fn, loc))
 }
 
-func joinedCids(cids []completionID) string {
-	var cidStrs []string
-	for _, cid := range cids {
-		cidStrs = append(cidStrs, string(cid))
+func joinedCids(sids []stageID) string {
+	var sidStrs []string
+	for _, sid := range sids {
+		sidStrs = append(sidStrs, string(sid))
 	}
-	return strings.Join(cidStrs, ",")
+	return strings.Join(sidStrs, ",")
 }
 
-func (cs *completerServiceClient) allOf(tid threadID, cids []completionID, loc *codeLoc) completionID {
-	URL := fmt.Sprintf("%s?cids=%s", cs.protocol.rootStageURL("allOf", tid), joinedCids(cids))
+func (cs *completerServiceClient) allOf(fid flowID, sids []stageID, loc *codeLoc) stageID {
+	URL := fmt.Sprintf("%s?sids=%s", cs.protocol.rootStageURL("allOf", fid), joinedCids(sids))
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 
-func (cs *completerServiceClient) anyOf(tid threadID, cids []completionID, loc *codeLoc) completionID {
-	URL := fmt.Sprintf("%s?cids=%s", cs.protocol.rootStageURL("anyOf", tid), joinedCids(cids))
+func (cs *completerServiceClient) anyOf(fid flowID, sids []stageID, loc *codeLoc) stageID {
+	URL := fmt.Sprintf("%s?sids=%s", cs.protocol.rootStageURL("anyOf", fid), joinedCids(sids))
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 
-func (cs *completerServiceClient) handle(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("handle", tid, cid, fn, loc))
+func (cs *completerServiceClient) handle(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("handle", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) exceptionally(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("exceptionally", tid, cid, fn, loc))
+func (cs *completerServiceClient) exceptionally(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("exceptionally", fid, sid, fn, loc))
 }
 
-func (cs *completerServiceClient) exceptionallyCompose(tid threadID, cid completionID, fn interface{}, loc *codeLoc) completionID {
-	return cs.addStage(cs.protocol.chained("exceptionallyCompose", tid, cid, fn, loc))
+func (cs *completerServiceClient) exceptionallyCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
+	return cs.addStage(cs.protocol.chained("exceptionallyCompose", fid, sid, fn, loc))
 }
 
 type externalCompletion struct {
-	cid           completionID
+	sid           stageID
 	completionURL *url.URL
 	failURL       *url.URL
 }
 
-func (cs *completerServiceClient) createExternalCompletion(tid threadID, loc *codeLoc) *externalCompletion {
-	URL := cs.protocol.rootStageURL("externalCompletion", tid)
-	cid := cs.addStage(cs.protocol.completion(URL, loc, nil))
-	cURL, err := url.Parse(cs.protocol.chainedStageURL("complete", tid, cid))
+func (cs *completerServiceClient) createExternalCompletion(fid flowID, loc *codeLoc) *externalCompletion {
+	URL := cs.protocol.rootStageURL("externalCompletion", fid)
+	sid := cs.addStage(cs.protocol.completion(URL, loc, nil))
+	cURL, err := url.Parse(cs.protocol.chainedStageURL("complete", fid, sid))
 	if err != nil {
 		panic("Failed to parse completionURL")
 	}
-	fURL, err := url.Parse(cs.protocol.chainedStageURL("fail", tid, cid))
+	fURL, err := url.Parse(cs.protocol.chainedStageURL("fail", fid, sid))
 	if err != nil {
 		panic("Failed to parse failURL")
 	}
-	return &externalCompletion{cid: cid, completionURL: cURL, failURL: fURL}
+	return &externalCompletion{sid: sid, completionURL: cURL, failURL: fURL}
 }
 
-func (cs *completerServiceClient) invokeFunction(tid threadID, functionID string, req *HTTPRequest, loc *codeLoc) completionID {
-	URL := fmt.Sprintf("%s?functionId=%s", cs.protocol.rootStageURL("invokeFunction", tid), functionID)
+func (cs *completerServiceClient) invokeFunction(fid flowID, functionID string, req *HTTPRequest, loc *codeLoc) stageID {
+	URL := fmt.Sprintf("%s?functionId=%s", cs.protocol.rootStageURL("invokeFunction", fid), functionID)
 	return cs.addStage(cs.protocol.invokeFunction(URL, loc, req))
 }
 
-func (cs *completerServiceClient) delay(tid threadID, duration time.Duration, loc *codeLoc) completionID {
+func (cs *completerServiceClient) delay(fid flowID, duration time.Duration, loc *codeLoc) stageID {
 	timeMs := int64(duration / time.Millisecond)
-	URL := fmt.Sprintf("%s?delayMs=%d", cs.protocol.rootStageURL("delay", tid), timeMs)
+	URL := fmt.Sprintf("%s?delayMs=%d", cs.protocol.rootStageURL("delay", fid), timeMs)
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 
@@ -188,15 +188,15 @@ func (f *futureResult) Err() error {
 	return f.err
 }
 
-func (cs *completerServiceClient) getAsync(tid threadID, cid completionID, rType reflect.Type) chan FutureResult {
+func (cs *completerServiceClient) getAsync(fid flowID, sid stageID, rType reflect.Type) chan FutureResult {
 	ch := make(chan FutureResult)
-	go cs.get(tid, cid, rType, ch)
+	go cs.get(fid, sid, rType, ch)
 	return ch
 }
 
-func (cs *completerServiceClient) get(tid threadID, cid completionID, rType reflect.Type, ch chan FutureResult) {
-	debug(fmt.Sprintf("Getting result for stage %s and thread %s", cid, tid))
-	req := cs.protocol.getStageReq(tid, cid)
+func (cs *completerServiceClient) get(fid flowID, sid stageID, rType reflect.Type, ch chan FutureResult) {
+	debug(fmt.Sprintf("Getting result for stage %s and flow %s", sid, fid))
+	req := cs.protocol.getStageReq(fid, sid)
 	res, err := hc.Do(req)
 	if err != nil {
 		panic("Failed request: " + err.Error())
@@ -217,11 +217,11 @@ func (cs *completerServiceClient) get(tid threadID, cid completionID, rType refl
 	ch <- result
 }
 
-func (cs *completerServiceClient) commit(tid threadID) {
-	cs.safeReq(cs.protocol.commit(tid))
+func (cs *completerServiceClient) commit(fid flowID) {
+	cs.safeReq(cs.protocol.commit(fid))
 }
 
-func (cs *completerServiceClient) addStage(req *http.Request) completionID {
+func (cs *completerServiceClient) addStage(req *http.Request) stageID {
 	return cs.protocol.parseStageID(cs.safeReq(req))
 }
 
