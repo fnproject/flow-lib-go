@@ -99,7 +99,7 @@ func (d *blobDatum) Decode(argType reflect.Type, reader io.Reader, header *textp
 		debug(fmt.Sprintf("Decoding gob of type %v", argType))
 		// we use gobs for encoding errors as strings
 		if header.Get(ResultStatusHeader) == FailureHeaderValue {
-			errString := decodeGob(reader, argType).(string)
+			errString := decodeGob(reader, reflect.TypeOf("")).(string)
 			return errors.New(errString), true
 		}
 		return decodeGob(reader, argType), true
