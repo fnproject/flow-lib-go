@@ -89,7 +89,7 @@ func lookupEnv(key string) (string, bool) {
 }
 
 type CloudThread interface {
-	InvokeFunction(functionID string, req HTTPRequest) CloudFuture
+	InvokeFunction(functionID string, req *HTTPRequest) CloudFuture
 	Supply(function interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
 	CompletedValue(value interface{}) CloudFuture // value of error indicates failed future
@@ -151,14 +151,6 @@ type cloudFuture struct {
 	returnType   reflect.Type
 }
 
-func (ct *cloudThread) newCloudFuture(cid completionID) CloudFuture {
-	return &cloudFuture{cloudThread: ct, completionID: cid}
-}
-
-func (ct *cloudThread) newTypedCloudFuture(cid completionID, rType reflect.Type) CloudFuture {
-	return &cloudFuture{cloudThread: ct, completionID: cid, returnType: rType}
-}
-
 // wraps result to runtime.Caller()
 type codeLoc struct {
 	file string
@@ -190,22 +182,32 @@ func returnTypeForFunc(fn interface{}) reflect.Type {
 	return nil
 }
 
+func (ct *cloudThread) continuationFuture(cid completionID, fn interface{}) *cloudFuture {
+	return &cloudFuture{cloudThread: ct, completionID: cid, returnType: returnTypeForFunc(fn)}
+}
+
 func (ct *cloudThread) Supply(function interface{}) CloudFuture {
-	return ct.newTypedCloudFuture(ct.completer.supply(ct.threadID, function, newCodeLoc()),
-		returnTypeForFunc(function))
+	cid := ct.completer.supply(ct.threadID, function, newCodeLoc())
+	return ct.continuationFuture(cid, function)
 }
 
 func (ct *cloudThread) Delay(duration time.Duration) CloudFuture {
-	return ct.newCloudFuture(ct.completer.delay(ct.threadID, duration, newCodeLoc()))
+	cid := ct.completer.delay(ct.threadID, duration, newCodeLoc())
+	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
 func (ct *cloudThread) CompletedValue(value interface{}) CloudFuture {
-	return ct.newTypedCloudFuture(ct.completer.completedValue(ct.threadID, value, newCodeLoc()),
-		reflect.TypeOf(value))
+	cid := ct.completer.completedValue(ct.threadID, value, newCodeLoc())
+	return &cloudFuture{cloudThread: ct, completionID: cid, returnType: reflect.TypeOf(value)}
 }
 
-func (ct *cloudThread) InvokeFunction(functionID string, req HTTPRequest) CloudFuture {
-	return ct.newCloudFuture(ct.completer.invokeFunction(ct.threadID, functionID, req, newCodeLoc()))
+func (ct *cloudThread) InvokeFunction(functionID string, req *HTTPRequest) CloudFuture {
+	cid := ct.completer.invokeFunction(ct.threadID, functionID, req, newCodeLoc())
+	return &cloudFuture{
+		cloudThread:  ct,
+		completionID: cid,
+		returnType:   reflect.TypeOf(new(HTTPResponse)),
+	}
 }
 
 type externalCloudFuture struct {
@@ -224,8 +226,13 @@ func (ex *externalCloudFuture) FailURL() *url.URL {
 
 func (ct *cloudThread) CreateExternalFuture() ExternalCloudFuture {
 	ec := ct.completer.createExternalCompletion(ct.threadID, newCodeLoc())
+	cf := cloudFuture{
+		cloudThread:  ct,
+		completionID: ec.cid,
+		returnType:   reflect.TypeOf(new(HTTPRequest)),
+	}
 	return &externalCloudFuture{
-		cloudFuture:   cloudFuture{cloudThread: ct, completionID: ec.cid},
+		cloudFuture:   cf,
 		completionURL: ec.completionURL,
 		failURL:       ec.failURL,
 	}
@@ -241,11 +248,13 @@ func futureCids(futures ...CloudFuture) []completionID {
 }
 
 func (ct *cloudThread) AllOf(futures ...CloudFuture) CloudFuture {
-	return ct.newCloudFuture(ct.completer.allOf(ct.threadID, futureCids(futures...), newCodeLoc()))
+	cid := ct.completer.allOf(ct.threadID, futureCids(futures...), newCodeLoc())
+	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
 func (ct *cloudThread) AnyOf(futures ...CloudFuture) CloudFuture {
-	return ct.newCloudFuture(ct.completer.anyOf(ct.threadID, futureCids(futures...), newCodeLoc()))
+	cid := ct.completer.anyOf(ct.threadID, futureCids(futures...), newCodeLoc())
+	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
 func (cf *cloudFuture) Get() chan FutureResult {
@@ -258,60 +267,62 @@ func (cf *cloudFuture) GetType(t reflect.Type) chan FutureResult {
 
 func (cf *cloudFuture) ThenApply(function interface{}) CloudFuture {
 	cid := cf.completer.thenApply(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid, returnType: returnTypeForFunc(function)}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) ThenCompose(function interface{}) CloudFuture {
 	cid := cf.completer.thenCompose(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	// no type information available for inner future
+	return &cloudFuture{cloudThread: ct, completionID: cid}
 }
 
 func (cf *cloudFuture) ThenCombine(other CloudFuture, function interface{}) CloudFuture {
 	cid := cf.completer.thenCombine(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) WhenComplete(function interface{}) CloudFuture {
 	cid := cf.completer.whenComplete(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) ThenAccept(function interface{}) CloudFuture {
 	cid := cf.completer.thenAccept(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) AcceptEither(other CloudFuture, function interface{}) CloudFuture {
 	cid := cf.completer.acceptEither(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) ApplyToEither(other CloudFuture, function interface{}) CloudFuture {
 	cid := cf.completer.applyToEither(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) ThenAcceptBoth(other CloudFuture, function interface{}) CloudFuture {
 	cid := cf.completer.thenAcceptBoth(cf.threadID, cf.completionID, other.(*cloudFuture).completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) ThenRun(function interface{}) CloudFuture {
 	cid := cf.completer.thenRun(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) Handle(function interface{}) CloudFuture {
 	cid := cf.completer.handle(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) Exceptionally(function interface{}) CloudFuture {
 	cid := cf.completer.exceptionally(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	return ct.continuationFuture(cid, function)
 }
 
 func (cf *cloudFuture) ExceptionallyCompose(function interface{}) CloudFuture {
 	cid := cf.completer.exceptionallyCompose(cf.threadID, cf.completionID, function, newCodeLoc())
-	return &cloudFuture{cloudThread: cf.cloudThread, completionID: cid}
+	// no type information available for inner future
+	return &cloudFuture{cloudThread: ct, completionID: cid}
 }

@@ -128,7 +128,7 @@ func (p *completerProtocol) completionWithBody(URL string, fn interface{}, loc *
 	return p.completion(URL, loc, bytes.NewReader(b))
 }
 
-func (p *completerProtocol) invokeFunction(URL string, loc *codeLoc, r HTTPRequest) *http.Request {
+func (p *completerProtocol) invokeFunction(URL string, loc *codeLoc, r *HTTPRequest) *http.Request {
 	req := createRequest("POST", URL, bytes.NewReader(r.Body))
 	req.Header.Set(DatumTypeHeader, HTTPReqDatumHeader)
 	req.Header.Set(MethodHeader, r.Method)
