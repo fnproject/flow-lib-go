@@ -19,7 +19,7 @@ var hc = &http.Client{
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Minute,
 		ExpectContinueTimeout: 1 * time.Second,
 	},
 }

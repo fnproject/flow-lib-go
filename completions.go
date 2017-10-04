@@ -93,7 +93,7 @@ type CloudThread interface {
 	Supply(function interface{}) CloudFuture
 	Delay(duration time.Duration) CloudFuture
 	CompletedValue(value interface{}) CloudFuture // value of error indicates failed future
-	CreateExternalFuture() ExternalCloudFuture
+	ExternalFuture() ExternalCloudFuture
 	AllOf(futures ...CloudFuture) CloudFuture
 	AnyOf(futures ...CloudFuture) CloudFuture
 }
@@ -224,7 +224,7 @@ func (ex *externalCloudFuture) FailURL() *url.URL {
 	return ex.failURL
 }
 
-func (ct *cloudThread) CreateExternalFuture() ExternalCloudFuture {
+func (ct *cloudThread) ExternalFuture() ExternalCloudFuture {
 	ec := ct.completer.createExternalCompletion(ct.threadID, newCodeLoc())
 	cf := cloudFuture{
 		cloudThread:  ct,

@@ -173,7 +173,7 @@ func (d *httpReqDatum) Decode(argType reflect.Type, reader io.Reader, header *te
 	}
 	body, bodyErr := ioutil.ReadAll(reader)
 	if bodyErr != nil {
-		panic("Failed to read body of HTTP response")
+		debug("Failed to read body of HTTP response: " + bodyErr.Error())
 	}
 	headers := http.Header{}
 	for k, values := range *header {
@@ -208,7 +208,7 @@ func (d *httpRespDatum) Decode(argType reflect.Type, reader io.Reader, header *t
 	}
 	body, bodyErr := ioutil.ReadAll(reader)
 	if bodyErr != nil {
-		panic("Failed to read body of HTTP response")
+		debug("Failed to read body of HTTP response: " + bodyErr.Error())
 	}
 	headers := http.Header{}
 	for k, values := range *header {
