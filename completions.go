@@ -65,10 +65,10 @@ func initFlow(codec codec, shouldCreate bool) {
 	var flowID flowID
 	if shouldCreate {
 		flowID = completer.createFlow(getFunctionID(codec))
-		debug(fmt.Sprintf("Created new flow %s", flowID))
+		debug(fmt.Sprintf("Created new flow %v", flowID))
 	} else {
 		flowID = codec.getFlowID()
-		debug(fmt.Sprintf("Awakened flow %s", flowID))
+		debug(fmt.Sprintf("Awakened flow %v", flowID))
 	}
 	cfMtx.Lock()
 	defer cfMtx.Unlock()
@@ -92,7 +92,7 @@ func lookupEnv(key string) (string, bool) {
 
 type Flow interface {
 	InvokeFunction(functionID string, req *HTTPRequest) FlowFuture
-	Supply(acfion interface{}) FlowFuture
+	Supply(action interface{}) FlowFuture
 	Delay(duration time.Duration) FlowFuture
 	CompletedValue(value interface{}) FlowFuture // value of error indicates failed future
 	ExternalFuture() ExternalFlowFuture
@@ -109,18 +109,18 @@ type FlowFuture interface {
 	Get() chan FutureResult
 	// Get result as the given type. E.g. for use with ThenCompose
 	GetType(t reflect.Type) chan FutureResult
-	ThenApply(acfion interface{}) FlowFuture
-	ThenCompose(acfion interface{}) FlowFuture
-	ThenCombine(other FlowFuture, acfion interface{}) FlowFuture
-	WhenComplete(acfion interface{}) FlowFuture
-	ThenAccept(acfion interface{}) FlowFuture
-	AcceptEither(other FlowFuture, acfion interface{}) FlowFuture
-	ApplyToEither(other FlowFuture, acfion interface{}) FlowFuture
-	ThenAcceptBoth(other FlowFuture, acfion interface{}) FlowFuture
-	ThenRun(acfion interface{}) FlowFuture
-	Handle(acfion interface{}) FlowFuture
-	Exceptionally(acfion interface{}) FlowFuture
-	ExceptionallyCompose(acfion interface{}) FlowFuture
+	ThenApply(action interface{}) FlowFuture
+	ThenCompose(action interface{}) FlowFuture
+	ThenCombine(other FlowFuture, action interface{}) FlowFuture
+	WhenComplete(action interface{}) FlowFuture
+	ThenAccept(action interface{}) FlowFuture
+	AcceptEither(other FlowFuture, action interface{}) FlowFuture
+	ApplyToEither(other FlowFuture, action interface{}) FlowFuture
+	ThenAcceptBoth(other FlowFuture, action interface{}) FlowFuture
+	ThenRun(action interface{}) FlowFuture
+	Handle(action interface{}) FlowFuture
+	Exceptionally(action interface{}) FlowFuture
+	ExceptionallyCompose(action interface{}) FlowFuture
 }
 
 type ExternalFlowFuture interface {
@@ -188,9 +188,9 @@ func (cf *flow) continuationFuture(sid stageID, fn interface{}) *flowFuture {
 	return &flowFuture{flow: cf, stageID: sid, returnType: returnTypeForFunc(fn)}
 }
 
-func (cf *flow) Supply(acfion interface{}) FlowFuture {
-	sid := cf.completer.supply(cf.flowID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (cf *flow) Supply(action interface{}) FlowFuture {
+	sid := cf.completer.supply(cf.flowID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
 func (cf *flow) Delay(duration time.Duration) FlowFuture {
@@ -267,64 +267,64 @@ func (f *flowFuture) GetType(t reflect.Type) chan FutureResult {
 	return f.completer.getAsync(f.flowID, f.stageID, t)
 }
 
-func (f *flowFuture) ThenApply(acfion interface{}) FlowFuture {
-	sid := f.completer.thenApply(f.flowID, f.stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) ThenApply(action interface{}) FlowFuture {
+	sid := f.completer.thenApply(f.flowID, f.stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) ThenCompose(acfion interface{}) FlowFuture {
-	sid := f.completer.thenCompose(f.flowID, f.stageID, acfion, newCodeLoc())
+func (f *flowFuture) ThenCompose(action interface{}) FlowFuture {
+	sid := f.completer.thenCompose(f.flowID, f.stageID, action, newCodeLoc())
 	// no type information available for inner future
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
-func (f *flowFuture) ThenCombine(other FlowFuture, acfion interface{}) FlowFuture {
-	sid := f.completer.thenCombine(f.flowID, f.stageID, other.(*flowFuture).stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) ThenCombine(other FlowFuture, action interface{}) FlowFuture {
+	sid := f.completer.thenCombine(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) WhenComplete(acfion interface{}) FlowFuture {
-	sid := f.completer.whenComplete(f.flowID, f.stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) WhenComplete(action interface{}) FlowFuture {
+	sid := f.completer.whenComplete(f.flowID, f.stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) ThenAccept(acfion interface{}) FlowFuture {
-	sid := f.completer.thenAccept(f.flowID, f.stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) ThenAccept(action interface{}) FlowFuture {
+	sid := f.completer.thenAccept(f.flowID, f.stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) AcceptEither(other FlowFuture, acfion interface{}) FlowFuture {
-	sid := f.completer.acceptEither(f.flowID, f.stageID, other.(*flowFuture).stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) AcceptEither(other FlowFuture, action interface{}) FlowFuture {
+	sid := f.completer.acceptEither(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) ApplyToEither(other FlowFuture, acfion interface{}) FlowFuture {
-	sid := f.completer.applyToEither(f.flowID, f.stageID, other.(*flowFuture).stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) ApplyToEither(other FlowFuture, action interface{}) FlowFuture {
+	sid := f.completer.applyToEither(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) ThenAcceptBoth(other FlowFuture, acfion interface{}) FlowFuture {
-	sid := f.completer.thenAcceptBoth(f.flowID, f.stageID, other.(*flowFuture).stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) ThenAcceptBoth(other FlowFuture, action interface{}) FlowFuture {
+	sid := f.completer.thenAcceptBoth(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) ThenRun(acfion interface{}) FlowFuture {
-	sid := f.completer.thenRun(f.flowID, f.stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) ThenRun(action interface{}) FlowFuture {
+	sid := f.completer.thenRun(f.flowID, f.stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) Handle(acfion interface{}) FlowFuture {
-	sid := f.completer.handle(f.flowID, f.stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) Handle(action interface{}) FlowFuture {
+	sid := f.completer.handle(f.flowID, f.stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) Exceptionally(acfion interface{}) FlowFuture {
-	sid := f.completer.exceptionally(f.flowID, f.stageID, acfion, newCodeLoc())
-	return cf.continuationFuture(sid, acfion)
+func (f *flowFuture) Exceptionally(action interface{}) FlowFuture {
+	sid := f.completer.exceptionally(f.flowID, f.stageID, action, newCodeLoc())
+	return cf.continuationFuture(sid, action)
 }
 
-func (f *flowFuture) ExceptionallyCompose(acfion interface{}) FlowFuture {
-	sid := f.completer.exceptionallyCompose(f.flowID, f.stageID, acfion, newCodeLoc())
+func (f *flowFuture) ExceptionallyCompose(action interface{}) FlowFuture {
+	sid := f.completer.exceptionallyCompose(f.flowID, f.stageID, action, newCodeLoc())
 	// no type information available for inner future
 	return &flowFuture{flow: cf, stageID: sid}
 }
