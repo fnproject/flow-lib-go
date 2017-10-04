@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	dbg "runtime/debug"
 	"strings"
 	"sync"
 )
@@ -20,6 +21,8 @@ func invoke(continuation interface{}, args ...interface{}) (result interface{}, 
 	// catch panics and return them as errors
 	defer func() {
 		if r := recover(); r != nil {
+			stack := fmt.Sprintf("%s: %s", r, dbg.Stack()) // line 20
+			debug(fmt.Sprintf("Recovered from invoke error:\n %s", stack))
 			err = fmt.Errorf("%v", r)
 		}
 	}()
@@ -50,12 +53,24 @@ func valToError(v reflect.Value) error {
 }
 
 func invokeContinuation(continuation interface{}, args ...interface{}) []reflect.Value {
-	v := reflect.ValueOf(continuation)
-	rargs := make([]reflect.Value, len(args))
-	for i, a := range args {
-		rargs[i] = reflect.ValueOf(a)
+	fn := reflect.ValueOf(continuation)
+	var rargs []reflect.Value
+	argTypes := continuationArgTypes(continuation)
+
+	if reflect.TypeOf(continuation).NumIn() == 0 {
+		debug("Ignoring arguments for empty continuation function")
+		rargs = make([]reflect.Value, 0)
+	} else {
+		rargs = make([]reflect.Value, len(args))
+		for i, a := range args {
+			if a == nil { // converts empty datum parameters to zero type
+				rargs[i] = reflect.Zero(argTypes[i])
+			} else {
+				rargs[i] = reflect.ValueOf(a)
+			}
+		}
 	}
-	return v.Call(rargs)
+	return fn.Call(rargs)
 }
 
 type cKey string

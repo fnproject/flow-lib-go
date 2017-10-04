@@ -170,7 +170,8 @@ func (cs *completerServiceClient) invokeFunction(tid threadID, functionID string
 }
 
 func (cs *completerServiceClient) delay(tid threadID, duration time.Duration, loc *codeLoc) completionID {
-	URL := fmt.Sprintf("%s?delayMs=%d", cs.protocol.rootStageURL("delay", tid), int64(duration))
+	timeMs := int64(duration / time.Millisecond)
+	URL := fmt.Sprintf("%s?delayMs=%d", cs.protocol.rootStageURL("delay", tid), timeMs)
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 

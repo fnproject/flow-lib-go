@@ -202,6 +202,9 @@ func decodeContinuationArg(continuation interface{}, argIndex int, reader io.Rea
 	argTypes := continuationArgTypes(continuation)
 	if len(argTypes) < argIndex {
 		panic("Invalid number of arguments decoded for continuation")
+	} else if len(argTypes) == 0 {
+		debug("Ignoring datum parameter for no-arg function")
+		return nil
 	}
 	return decodeDatum(argTypes[argIndex], reader, header)
 }
