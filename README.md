@@ -24,12 +24,11 @@ func main() {
 			select {
 			case result := <-ch:
 				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
+					fmt.Printf("Flow failed with error %v", result.Err())
 				} else {
-					fmt.Printf("GOT RESULT %v\n", result.Value())
+					fmt.Printf("Flow succeeded with result %v\n", result.Value())
 				}
 			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
 				fmt.Printf("Timed out!")
 			}
 		})
