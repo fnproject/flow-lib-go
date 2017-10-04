@@ -1,7 +1,7 @@
 # FnFlow Applications for Go
 
 ## Introduction
-Simply import this library from your go application, deploy it on fn, and start using the power of FnFlow.
+Simply import this library into your go application, deploy it on fn, and start using the power of FnFlow.
 
 ## Getting Started
 ```go
@@ -38,4 +38,4 @@ func main() {
 
 ## More Examples
 
-A variety of example use cases are provided [here](examples/README.md).
+A variety of example use cases are provided [here](examples/hello-flow/README.md).
