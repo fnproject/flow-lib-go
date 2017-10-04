@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/textproto"
 	"reflect"
-	"strings"
 )
 
 const (
@@ -89,17 +88,15 @@ func (p *completerProtocol) completedValueReq(fid flowID, value interface{}) *ht
 	URL := p.rootStageURL("completedValue", fid)
 	var req *http.Request
 	if err, isErr := value.(error); isErr {
-		req = createRequest("POST", URL, strings.NewReader(err.Error()))
+		// errors are encoded as string gobs
+		req = createRequest("POST", URL, encodeGob(err.Error()))
 		req.Header.Set(ResultStatusHeader, FailureHeaderValue)
-		req.Header.Set(ErrorTypeHeader, "user-defined-error")
-		req.Header.Set(DatumTypeHeader, ErrorDatumHeader)
-		req.Header.Set(ContentTypeHeader, TextMediaHeader)
 	} else {
 		req = createRequest("POST", URL, encodeGob(value))
 		req.Header.Set(ResultStatusHeader, SuccessHeaderValue)
-		req.Header.Set(DatumTypeHeader, BlobDatumHeader)
-		req.Header.Set(ContentTypeHeader, GobMediaHeader)
 	}
+	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
+	req.Header.Set(ContentTypeHeader, GobMediaHeader)
 	return req
 }
 
