@@ -65,6 +65,10 @@ Go allows functions to return error types in addition to a result via its suppor
 
 If a panic occurs while invoking the continuation function, the panic value will be captured and the stage failed with the same value.
 
+### Are hot functions supported?
+
+Currently only cold functions are supported.
+
 ### Can I invoke other fn functions?
 
 Yes. `flows.CurrentFlow().InvokeFunction("myapp/myfn", req)`. See [here](examples/hello-flow/func.go) for a full example.
