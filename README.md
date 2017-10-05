@@ -1,9 +1,8 @@
-# FnFlow Applications for Go
+# FnFlow Library for Go
 
-## Introduction
-Simply import this library into your go application, deploy it on fn, and start using the power of FnFlow.
+## Quick Intro
+Simply import this library into your go function, deploy it on fn, and start using the power of FnFlow.
 
-## Getting Started
 ```go
 package main
 
@@ -17,24 +16,51 @@ func init() {
 }
 
 func main() {
-	flows.WithFlow(
-		func() {
-			cf := flows.CurrentFlow().CompletedValue("foo")
-			ch := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("Flow failed with error %v", result.Err())
-				} else {
-					fmt.Printf("Flow succeeded with result %v\n", result.Value())
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Printf("Timed out!")
+	flows.WithFlow(func() {
+		cf := flows.CurrentFlow().CompletedValue("foo")
+		ch := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
+		select {
+		case result := <-ch:
+			if result.Err() != nil {
+				fmt.Printf("Flow failed with error %v", result.Err())
+			} else {
+				fmt.Printf("Flow succeeded with result %v\n", result.Value())
 			}
-		})
+		case <-time.After(time.Minute * 1):
+			fmt.Printf("Timed out!")
+		}
+	})
 }
 ```
 
-## More Examples
+## Where do I go from here?
 
-A variety of example use cases are provided [here](examples/hello-flow/README.md).
+A variety of example use-cases is provided [here](examples/hello-flow/README.md).
+
+## FAQs
+
+### How are values serialized?
+
+Go's [gob](https://golang.org/pkg/encoding/gob/) serialization mechanism is used to encode/decode values for communication with the completer.
+
+### What kinds of values can be serialized?
+
+Booleans, string, structs, arrays and slices are supported. Functions, closures and channels are not.
+
+### How are continuations serialized?
+
+Since Go does not support [serializing closures/functions](https://github.com/golang/go/issues/5514) due to its statically compiled nature, they are in fact not serialized at all. Go functions implementing a continuation need to be explicitly registered by calling `flows.RegisterAction(actionFunction)` typically inside the handler's _init_ function. Registering actions assigns a unique and stable key that can be serialized and used to look up a pointer to the function during a continuation invocation.
+
+### Why do actions need to be registered?
+
+See above.
+
+### Can I use closures or method receivers?
+
+No. Only continuation actions implemented with functions are supported, since they are stateless. No state will be serialized with a continuation.
+
+### How does error-handling work?
+
+Go allows functions to return error types in addition to a result via its support for multiple return values. If a continuation function returns a (non-nil) error as its second return value, its error message will be serialized and form the failed value of that stage.
+
+If a panic occurs while invoking the continuation function, the panic value will be captured and the stage failed with the same value.
