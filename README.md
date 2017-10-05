@@ -64,3 +64,7 @@ No. Only continuation actions implemented with functions are supported, since th
 Go allows functions to return error types in addition to a result via its support for multiple return values. If a continuation function returns a (non-nil) error as its second return value, its error message will be serialized and form the failed value of that stage.
 
 If a panic occurs while invoking the continuation function, the panic value will be captured and the stage failed with the same value.
+
+### Can I invoke other fn functions?
+
+Yes. `flows.CurrentFlow().InvokeFunction("myapp/myfn", req)`. See [here](examples/hello-flow/func.go) for a full example.
