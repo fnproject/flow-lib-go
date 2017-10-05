@@ -33,8 +33,7 @@ $ docker run --rm  \
 
 Deploy the example application to the functions server:
 ```
-make dep-up
-make deploy
+make dep-up deploy
 ```
 
 ## Invoke Example
