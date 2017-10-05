@@ -16,6 +16,7 @@ data
 
 # No need for the lock file as we're vendoring the deps
 glide.lock
+vendor/
 
 # Emacs
 .\#*
