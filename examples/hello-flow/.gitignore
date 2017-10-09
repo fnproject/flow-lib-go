@@ -28,3 +28,4 @@ vendor/
 # MacOSX files
 **/.DS_Store
 
+func.yaml
