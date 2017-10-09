@@ -111,8 +111,7 @@ func handleContinuation(codec codec) {
 	}
 	var decoded []interface{}
 	if strings.HasPrefix(mediaType, "multipart/") {
-		// stickyErrorReader workaround for https://github.com/golang/go/issues/14676
-		mr := multipart.NewReader(&stickyErrorReader{r: os.Stdin}, params["boundary"])
+		mr := multipart.NewReader(os.Stdin, params["boundary"])
 		for {
 			p, err := mr.NextPart()
 			if err != nil {
@@ -155,23 +154,4 @@ func decodeContinuation(reader io.Reader) interface{} {
 		panic("Continuation not registered")
 	}
 	return action
-}
-
-// from https://go-review.googlesource.com/c/go/+/22045/3/src/mime/multipart/multipart.go#99
-// stickyErrorReader is an io.Reader which never calls Read on its
-// underlying Reader once an error has been seen. (the io.Reader
-// interface's contract promises nothing about the return values of
-// Read calls after an error, yet this package does do multiple Reads
-// after error)
-type stickyErrorReader struct {
-	r   io.Reader
-	err error
-}
-
-func (r *stickyErrorReader) Read(p []byte) (n int, _ error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-	n, r.err = r.r.Read(p)
-	return n, r.err
 }
