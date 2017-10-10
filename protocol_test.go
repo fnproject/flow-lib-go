@@ -1,7 +1,9 @@
 package flows
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"net/textproto"
 	"reflect"
 	"testing"
@@ -69,6 +71,24 @@ func TestCompletedValueReqWithSuccess(t *testing.T) {
 func TestCompletedValueReqWithError(t *testing.T) {
 	req := cp.completedValueReq("fid", errors.New("foo"))
 	assert.Equal(t, FailureHeaderValue, req.Header.Get(ResultStatusHeader))
+}
+
+type Foo struct {
+	Name string
+}
+
+func (f *Foo) SayHello() string {
+	return "Hello " + f.Name
+}
+
+func TestMethodReceiver(t *testing.T) {
+	f := &Foo{Name: "Bar"}
+	b := encodeGob(f).Bytes()
+	rt := encodeGob(reflect.TypeOf(f)).Bytes()
+	r := &continuationRef{ID: getActionID(f.SayHello), Receiver: b, RcvType: rt}
+	dec := decodeGob(bytes.NewReader(r.Receiver), reflect.TypeOf(f))
+	result := reflect.ValueOf(dec).MethodByName("SayHello").Call([]reflect.Value{})
+	fmt.Println(result)
 }
 
 func gobHeaders() *textproto.MIMEHeader {

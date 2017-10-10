@@ -56,7 +56,9 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 }
 
 type continuationRef struct {
-	ID string `json:"action-id"`
+	ID       string `json:"action-id"`
+	Receiver []byte `json:"receiver,omitempty"`
+	RcvType  []byte `json:"rcvType,omitempty"`
 }
 
 func (cr *continuationRef) getKey() string {
@@ -64,7 +66,12 @@ func (cr *continuationRef) getKey() string {
 }
 
 func newContinuationRef(action interface{}) *continuationRef {
-	return &continuationRef{ID: getActionID(action)}
+	switch reflect.TypeOf(action).Kind() {
+	case reflect.Func:
+		return &continuationRef{ID: getActionID(action)}
+	default:
+		panic("Invalid continuation, must be either function or method receiver")
+	}
 }
 
 func (p *completerProtocol) parseFlowID(res *http.Response) flowID {
