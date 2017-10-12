@@ -1,4 +1,5 @@
-# FnFlow Library for Go
+# FnFlow Library for Go (experimental)
+An experimental FnFlow library for your Go runtimes.
 
 ## Quick Intro
 Simply import this library into your go function, deploy it on fn, and start using the power of FnFlow.
