@@ -1,4 +1,4 @@
-# FnFlow Library for Go (experimental)
+# FnFlow Library for Go
 An experimental FnFlow library for your Go runtimes.
 
 ## Quick Intro
