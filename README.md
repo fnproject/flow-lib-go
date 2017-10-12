@@ -56,9 +56,9 @@ Since Go does not support [serializing closures/functions](https://github.com/go
 
 See above.
 
-### Can I use closures or method receivers?
+### Can I use closures or method receivers in my continuations?
 
-No. Only continuation actions implemented with functions are supported, since they are stateless. No state will be serialized with a continuation.
+No. Only continuation actions implemented with functions are supported, since they are stateless. No state will be serialized with a continuation. Although possible, invoking a method receiver is not currently supported inside continuations.
 
 ### How does error-handling work?
 
