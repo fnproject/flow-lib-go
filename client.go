@@ -38,7 +38,7 @@ type stageID string
 type completerClient interface {
 	createFlow(fid string) flowID
 	commit(fid flowID)
-	getAsync(fid flowID, sid stageID, rType reflect.Type) chan FutureResult
+	getAsync(fid flowID, sid stageID, rType reflect.Type) (chan interface{}, chan error)
 	completedValue(fid flowID, value interface{}, loc *codeLoc) stageID
 	delay(fid flowID, duration time.Duration, loc *codeLoc) stageID
 	supply(fid flowID, fn interface{}, loc *codeLoc) stageID
@@ -175,26 +175,14 @@ func (cs *completerServiceClient) delay(fid flowID, duration time.Duration, loc 
 	return cs.addStage(cs.protocol.completion(URL, loc, nil))
 }
 
-type futureResult struct {
-	value interface{}
-	err   error
+func (cs *completerServiceClient) getAsync(fid flowID, sid stageID, rType reflect.Type) (chan interface{}, chan error) {
+	valueCh := make(chan interface{}, 1)
+	errorCh := make(chan error, 1)
+	go cs.get(fid, sid, rType, valueCh, errorCh)
+	return valueCh, errorCh
 }
 
-func (f *futureResult) Value() interface{} {
-	return f.value
-}
-
-func (f *futureResult) Err() error {
-	return f.err
-}
-
-func (cs *completerServiceClient) getAsync(fid flowID, sid stageID, rType reflect.Type) chan FutureResult {
-	ch := make(chan FutureResult)
-	go cs.get(fid, sid, rType, ch)
-	return ch
-}
-
-func (cs *completerServiceClient) get(fid flowID, sid stageID, rType reflect.Type, ch chan FutureResult) {
+func (cs *completerServiceClient) get(fid flowID, sid stageID, rType reflect.Type, valueCh chan interface{}, errorCh chan error) {
 	debug(fmt.Sprintf("Getting result for stage %s and flow %s", sid, fid))
 	req := cs.protocol.getStageReq(fid, sid)
 	res, err := hc.Do(req)
@@ -204,17 +192,15 @@ func (cs *completerServiceClient) get(fid flowID, sid stageID, rType reflect.Typ
 	defer res.Body.Close()
 
 	debug(fmt.Sprintf("Getting stage value of type %s", res.Header.Get(DatumTypeHeader)))
-	result := &futureResult{}
 	hdr := textproto.MIMEHeader(res.Header)
 	val := decodeDatum(rType, res.Body, &hdr)
 	if err, isErr := val.(error); isErr {
 		debug("Getting failed result")
-		result.err = err
+		errorCh <- err
 	} else {
 		debug("Getting successful result")
-		result.value = val
+		valueCh <- val
 	}
-	ch <- result
 }
 
 func (cs *completerServiceClient) commit(fid flowID) {

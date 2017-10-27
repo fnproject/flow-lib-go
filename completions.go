@@ -100,15 +100,10 @@ type Flow interface {
 	AnyOf(futures ...FlowFuture) FlowFuture
 }
 
-type FutureResult interface {
-	Value() interface{}
-	Err() error
-}
-
 type FlowFuture interface {
-	Get() chan FutureResult
+	Get() (chan interface{}, chan error)
 	// Get result as the given type. E.g. for use with ThenCompose
-	GetType(t reflect.Type) chan FutureResult
+	GetType(t reflect.Type) (chan interface{}, chan error)
 	ThenApply(action interface{}) FlowFuture
 	ThenCompose(action interface{}) FlowFuture
 	ThenCombine(other FlowFuture, action interface{}) FlowFuture
@@ -259,11 +254,11 @@ func (cf *flow) AnyOf(futures ...FlowFuture) FlowFuture {
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
-func (f *flowFuture) Get() chan FutureResult {
+func (f *flowFuture) Get() (chan interface{}, chan error) {
 	return f.completer.getAsync(f.flowID, f.stageID, f.returnType)
 }
 
-func (f *flowFuture) GetType(t reflect.Type) chan FutureResult {
+func (f *flowFuture) GetType(t reflect.Type) (chan interface{}, chan error) {
 	return f.completer.getAsync(f.flowID, f.stageID, t)
 }
 
