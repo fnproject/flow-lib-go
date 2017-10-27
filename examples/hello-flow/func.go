@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -146,11 +145,10 @@ func composedExample() {
 func printResult(valueCh chan interface{}, errorCh chan error) {
 	select {
 	case value := <-valueCh:
-		fmt.Printf("GOT RESULT %v\n", value)
+		fmt.Printf("Flow succeeded with value %v", value)
 	case err := <-errorCh:
-		fmt.Printf("GOT ERROR %v", err)
+		fmt.Printf("Flow failed with error %v", err)
 	case <-time.After(time.Minute * 1):
-		fmt.Fprintln(os.Stderr, "timeout")
 		fmt.Printf("Timed out!")
 	}
 }

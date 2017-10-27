@@ -19,14 +19,12 @@ func init() {
 func main() {
 	flows.WithFlow(func() {
 		cf := flows.CurrentFlow().CompletedValue("foo")
-		ch := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
+		valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
 		select {
-		case result := <-ch:
-			if result.Err() != nil {
-				fmt.Printf("Flow failed with error %v", result.Err())
-			} else {
-				fmt.Printf("Flow succeeded with result %v\n", result.Value())
-			}
+		case value := <-valueCh:
+			fmt.Printf("Flow succeeded with value %v", value)
+		case err := <-errorCh:
+			fmt.Printf("Flow failed with error %v", err)
 		case <-time.After(time.Minute * 1):
 			fmt.Printf("Timed out!")
 		}
