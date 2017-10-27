@@ -38,18 +38,8 @@ func stringExample() {
 	flows.WithFlow(
 		func() {
 			cf := flows.CurrentFlow().CompletedValue("foo")
-			ch := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					fmt.Printf("GOT RESULT %v\n", result.Value())
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
@@ -57,18 +47,8 @@ func errorValueExample() {
 	flows.WithFlow(
 		func() {
 			cf := flows.CurrentFlow().CompletedValue(errors.New("foo"))
-			ch := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					fmt.Printf("GOT RESULT %v\n", result.Value())
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
@@ -89,18 +69,8 @@ func errorFuncExample() {
 	flows.WithFlow(
 		func() {
 			cf := flows.CurrentFlow().CompletedValue("hello")
-			ch := cf.ThenApply(FailedFunc).Handle(HandleFunc).Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					fmt.Printf("GOT RESULT %v\n", result.Value())
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.ThenApply(FailedFunc).Handle(HandleFunc).Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
@@ -117,17 +87,8 @@ func structExample() {
 	flows.WithFlow(
 		func() {
 			cf := flows.CurrentFlow().CompletedValue(&foo{Name: "foo"})
-			ch := cf.ThenApply(FooToUpper).Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					fmt.Printf("GOT RESULT %v\n", result.Value())
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.ThenApply(FooToUpper).Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
@@ -139,18 +100,8 @@ func delayExample() {
 	flows.WithFlow(
 		func() {
 			cf := flows.CurrentFlow().Delay(5 * time.Second).ThenApply(EmptyFunc)
-			ch := cf.Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					fmt.Printf("GOT RESULT %v\n", result.Value())
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
@@ -159,19 +110,8 @@ func invokeExample() {
 		func() {
 			req := &flows.HTTPRequest{Method: "POST", Body: []byte("payload")}
 			cf := flows.CurrentFlow().InvokeFunction("foo/foofn", req)
-			ch := cf.Get()
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					resp := result.Value().(*flows.HTTPResponse)
-					fmt.Printf("GOT RESULT %v\n", string(resp.Body))
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
@@ -198,19 +138,19 @@ func composedExample() {
 	flows.WithFlow(
 		func() {
 			cf := flows.CurrentFlow().CompletedValue("foo")
-			ch := cf.ThenCompose(ComposedFunc).GetType(reflect.TypeOf(""))
-
-			select {
-			case result := <-ch:
-				if result.Err() != nil {
-					fmt.Printf("GOT ERROR %v", result.Err())
-				} else {
-					res := result.Value().(string)
-					fmt.Printf("GOT RESULT %v\n", res)
-				}
-			case <-time.After(time.Minute * 1):
-				fmt.Fprintln(os.Stderr, "timeout")
-				fmt.Printf("Timed out!")
-			}
+			valueCh, errorCh := cf.ThenCompose(ComposedFunc).GetType(reflect.TypeOf(""))
+			printResult(valueCh, errorCh)
 		})
+}
+
+func printResult(valueCh chan interface{}, errorCh chan error) {
+	select {
+	case value := <-valueCh:
+		fmt.Printf("GOT RESULT %v\n", value)
+	case err := <-errorCh:
+		fmt.Printf("GOT ERROR %v", err)
+	case <-time.After(time.Minute * 1):
+		fmt.Fprintln(os.Stderr, "timeout")
+		fmt.Printf("Timed out!")
+	}
 }
