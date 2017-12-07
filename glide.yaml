@@ -10,3 +10,8 @@ import:
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc
+  version: 6253aa9397d3f97c06b2c67e2b2965b558b3705f

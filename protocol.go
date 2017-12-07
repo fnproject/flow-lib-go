@@ -68,6 +68,7 @@ func newContinuationRef(action interface{}) *continuationRef {
 }
 
 func (p *completerProtocol) parseFlowID(res *http.Response) flowID {
+
 	return flowID(res.Header.Get(FlowIDHeader))
 }
 
@@ -75,9 +76,29 @@ func (p *completerProtocol) parseStageID(res *http.Response) stageID {
 	return stageID(res.Header.Get(StageIDHeader))
 }
 
+func (p *completerProtocol) newHTTPReq(path string, msg interface{}) *http.Request {
+	url := fmt.Sprintf("%s/%s", p.baseURL, path)
+	body := new(bytes.Buffer)
+	if err := json.NewEncoder(body).Encode(msg); err != nil {
+		panic("Failed to encode request object")
+	}
+
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		panic("Failed to create request object")
+	}
+	return req
+}
+
 func (p *completerProtocol) createFlowReq(functionID string) *http.Request {
-	url := fmt.Sprintf("%s/graph?functionId=%s", p.baseURL, functionID)
-	req, err := http.NewRequest("POST", url, nil)
+	url := fmt.Sprintf("%s/flows", p.baseURL)
+	msg := CreateGraphRequest{FunctionId: functionID}
+	body := new(bytes.Buffer)
+	if err := json.NewEncoder(body).Encode(msg); err != nil {
+		panic("Failed to encode request object")
+	}
+
+	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		panic("Failed to create request object")
 	}
@@ -101,11 +122,11 @@ func (p *completerProtocol) completedValueReq(fid flowID, value interface{}) *ht
 }
 
 func (p *completerProtocol) rootStageURL(op string, fid flowID) string {
-	return fmt.Sprintf("%s/graph/%s/%s", p.baseURL, fid, op)
+	return fmt.Sprintf("%s/flows/%s/%s", p.baseURL, fid, op)
 }
 
 func (p *completerProtocol) chainedStageURL(op string, fid flowID, sid stageID) string {
-	return fmt.Sprintf("%s/graph/%s/stage/%s/%s", p.baseURL, fid, sid, op)
+	return fmt.Sprintf("%s/flows/%s/stage/%s/%s", p.baseURL, fid, sid, op)
 }
 
 func (p *completerProtocol) chained(op string, fid flowID, sid stageID, fn interface{}, loc *codeLoc) *http.Request {
@@ -113,7 +134,7 @@ func (p *completerProtocol) chained(op string, fid flowID, sid stageID, fn inter
 }
 
 func (p *completerProtocol) chainedWithOther(op string, fid flowID, sid stageID, altCid stageID, fn interface{}, loc *codeLoc) *http.Request {
-	URL := fmt.Sprintf("%s/graph/%s/stage/%s/%s?other=%s", p.baseURL, fid, sid, op, string(altCid))
+	URL := fmt.Sprintf("%s/flows/%s/stage/%s/%s?other=%s", p.baseURL, fid, sid, op, string(altCid))
 	return p.completionWithBody(URL, fn, loc)
 }
 
@@ -151,11 +172,11 @@ func (p *completerProtocol) completion(URL string, loc *codeLoc, r io.Reader) *h
 }
 
 func (p *completerProtocol) getStageReq(fid flowID, sid stageID) *http.Request {
-	return createRequest("GET", fmt.Sprintf("%s/graph/%s/stage/%s", p.baseURL, fid, sid), nil)
+	return createRequest("GET", fmt.Sprintf("%s/flows/%s/stage/%s", p.baseURL, fid, sid), nil)
 }
 
 func (p *completerProtocol) commit(fid flowID) *http.Request {
-	return createRequest("POST", fmt.Sprintf("%s/graph/%s/commit", p.baseURL, fid), nil)
+	return createRequest("POST", fmt.Sprintf("%s/flows/%s/commit", p.baseURL, fid), nil)
 }
 
 // panics if the request can't be created
@@ -170,10 +191,19 @@ func createRequest(method string, url string, r io.Reader) *http.Request {
 
 func encodeGob(value interface{}) *bytes.Buffer {
 	var buf bytes.Buffer
-	buf.Len()
 	enc := gob.NewEncoder(&buf)
 	if err := enc.Encode(value); err != nil {
 		panic("Failed to encode gob: " + err.Error())
+	}
+	return &buf
+}
+
+func encodeContinuationRef(fn interface{}) *bytes.Buffer {
+	cr := newContinuationRef(fn)
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	if err := enc.Encode(cr); err != nil {
+		panic("Failed to encode continuation reference: " + err.Error())
 	}
 	return &buf
 }
