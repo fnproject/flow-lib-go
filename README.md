@@ -8,27 +8,32 @@ Simply import this library into your go function, deploy it on fn, and start usi
 package main
 
 import (
-	flows "github.com/fnproject/flow-lib-go"
+  "fmt"
+
+  fdk "github.com/fnproject/fdk-go"
+  flows "github.com/fnproject/flow-lib-go"
 )
 
 func init() {
-	flows.RegisterAction(strings.ToUpper)
-	flows.RegisterAction(strings.ToLower)
+  flows.RegisterAction(strings.ToUpper)
+  flows.RegisterAction(strings.ToLower)
 }
 
 func main() {
-	flows.WithFlow(func() {
-		cf := flows.CurrentFlow().CompletedValue("foo")
-		valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-		select {
-		case value := <-valueCh:
-			fmt.Printf("Flow succeeded with value %v", value)
-		case err := <-errorCh:
-			fmt.Printf("Flow failed with error %v", err)
-		case <-time.After(time.Minute * 1):
-			fmt.Printf("Timed out!")
-		}
-	})
+  fdk.Handle(flows.WithFlow(
+    fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
+      cf := flows.CurrentFlow().CompletedValue("foo")
+      valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
+      select {
+      case value := <-valueCh:
+        fmt.Fprintf(w, "Flow succeeded with value %v", value)
+      case err := <-errorCh:
+        fmt.Fprintf(w, "Flow failed with error %v", err)
+      case <-time.After(time.Minute * 1):
+        fmt.Fprintf(w, "Timed out!")
+      }
+    }),
+  )
 }
 ```
 
