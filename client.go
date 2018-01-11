@@ -97,7 +97,7 @@ type completerServiceClient struct {
 }
 
 func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http.Request {
-	url := fmt.Sprintf("v1/%s%s", cs.url, path)
+	url := fmt.Sprintf("%s/v1%s", cs.url, path)
 	body := new(bytes.Buffer)
 	if err := json.NewEncoder(body).Encode(msg); err != nil {
 		panic("Failed to encode request object")
