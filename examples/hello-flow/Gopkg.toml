@@ -1,0 +1,3 @@
+[[constraint]]
+  branch = "json-protocol-rewrite"
+  name = "github.com/fnproject/flow-lib-go"
