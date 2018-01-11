@@ -172,7 +172,7 @@ func (p *completerProtocol) completion(URL string, loc *codeLoc, r io.Reader) *h
 }
 
 func (p *completerProtocol) getStageReq(fid flowID, sid stageID) *http.Request {
-	return createRequest("GET", fmt.Sprintf("%s/flows/%s/stage/%s", p.baseURL, fid, sid), nil)
+	return createRequest("GET", fmt.Sprintf("%s/flows/%s/stage/%s/await", p.baseURL, fid, sid), nil)
 }
 
 func (p *completerProtocol) commit(fid flowID) *http.Request {
