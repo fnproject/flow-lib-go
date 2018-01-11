@@ -67,6 +67,7 @@ type completerClient interface {
 	createFlow(fid string) flowID
 	commit(fid flowID)
 	getAsync(fid flowID, sid stageID, rType reflect.Type) (chan interface{}, chan error)
+	emptyFuture(fid flowID, loc *codeLoc) stageID
 	completedValue(fid flowID, value interface{}, loc *codeLoc) stageID
 	delay(fid flowID, duration time.Duration, loc *codeLoc) stageID
 	supply(fid flowID, fn interface{}, loc *codeLoc) stageID
@@ -116,7 +117,7 @@ func (cs *completerServiceClient) datumFromValue(fid flowID, value interface{}) 
 
 	switch v := value.(type) {
 	case FlowFuture:
-		f, ok := value.(flowFuture)
+		f, ok := v.(*flowFuture)
 		if !ok {
 			log.Fatalf("Tried to return unsupported flow future type!")
 		}
@@ -136,7 +137,7 @@ func (cs *completerServiceClient) datumFromValue(fid flowID, value interface{}) 
 
 	default:
 		b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
-		return &Datum{Val: &Datum_Blob{Blob: &BlobDatum{BlobId: b.blobId, ContentType: b.contentType, Length: b.blobLength}}}
+		return &Datum{Val: &Datum_Blob{Blob: &BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}}}
 	}
 }
 
@@ -145,6 +146,10 @@ func (cs *completerServiceClient) createFlow(fid string) flowID {
 	req := cs.newHTTPReq("/flows", &CreateGraphRequest{FunctionId: fid})
 	cs.makeRequest(req, res)
 	return flowID(res.FlowId)
+}
+
+func (cs *completerServiceClient) emptyFuture(fid flowID, loc *codeLoc) stageID {
+	return cs.addStage(fid, CompletionOperation_externalCompletion, nil, loc, nil)
 }
 
 func (cs *completerServiceClient) completedValue(fid flowID, value interface{}, loc *codeLoc) stageID {
@@ -168,7 +173,7 @@ func (cs *completerServiceClient) supply(fid flowID, fn interface{}, loc *codeLo
 
 func (cs *completerServiceClient) addStageWithClosure(fid flowID, op CompletionOperation, fn interface{}, loc *codeLoc, deps []string) stageID {
 	b := cs.bsClient.WriteBlob(string(fid), JSONMediaHeader, encodeContinuationRef(fn))
-	blobDatum := &BlobDatum{BlobId: b.blobId, ContentType: b.contentType, Length: b.blobLength}
+	blobDatum := &BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
 	return cs.addStage(fid, op, blobDatum, loc, deps)
 }
 

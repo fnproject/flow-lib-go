@@ -3,7 +3,6 @@ package flows
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -95,7 +94,7 @@ type Flow interface {
 	Supply(action interface{}) FlowFuture
 	Delay(duration time.Duration) FlowFuture
 	CompletedValue(value interface{}) FlowFuture // value of error indicates failed future
-	ExternalFuture() ExternalFlowFuture
+	EmptyFuture() FlowFuture
 	AllOf(futures ...FlowFuture) FlowFuture
 	AnyOf(futures ...FlowFuture) FlowFuture
 }
@@ -116,12 +115,6 @@ type FlowFuture interface {
 	Handle(action interface{}) FlowFuture
 	Exceptionally(action interface{}) FlowFuture
 	ExceptionallyCompose(action interface{}) FlowFuture
-}
-
-type ExternalFlowFuture interface {
-	FlowFuture
-	CompletionURL() *url.URL
-	FailURL() *url.URL
 }
 
 type HTTPRequest struct {
@@ -207,32 +200,9 @@ func (cf *flow) InvokeFunction(functionID string, req *HTTPRequest) FlowFuture {
 	}
 }
 
-type externalFlowFuture struct {
-	flowFuture
-	completionURL *url.URL
-	failURL       *url.URL
-}
-
-func (ex *externalFlowFuture) CompletionURL() *url.URL {
-	return ex.completionURL
-}
-
-func (ex *externalFlowFuture) FailURL() *url.URL {
-	return ex.failURL
-}
-
-func (cf *flow) ExternalFuture() ExternalFlowFuture {
-	ec := cf.completer.createExternalCompletion(cf.flowID, newCodeLoc())
-	f := flowFuture{
-		flow:       cf,
-		stageID:    ec.sid,
-		returnType: reflect.TypeOf(new(HTTPRequest)),
-	}
-	return &externalFlowFuture{
-		flowFuture:    f,
-		completionURL: ec.completionURL,
-		failURL:       ec.failURL,
-	}
+func (cf *flow) EmptyFuture() FlowFuture {
+	sid := cf.completer.emptyFuture(cf.flowID, newCodeLoc())
+	return &flowFuture{flow: cf, stageID: sid}
 }
 
 func futureCids(futures ...FlowFuture) []stageID {

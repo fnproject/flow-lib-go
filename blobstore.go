@@ -11,9 +11,9 @@ import (
 )
 
 type BlobResponse struct {
-	blobId      string
-	blobLength  int64
-	contentType string
+	BlobId      string `json:"blob_id"`
+	BlobLength  int64  `json:"length"`
+	ContentType string `json:"content_type"`
 }
 
 type BlobStoreClient interface {
