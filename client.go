@@ -110,37 +110,6 @@ func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http
 	return req
 }
 
-func (cs *completerServiceClient) datumFromValue(fid flowID, value interface{}) *Datum {
-	if value == nil {
-		return &Datum{Val: &Datum_Empty{}}
-	}
-
-	switch v := value.(type) {
-	case FlowFuture:
-		f, ok := v.(*flowFuture)
-		if !ok {
-			log.Fatalf("Tried to return unsupported flow future type!")
-		}
-		return &Datum{Val: &Datum_StageRef{StageRef: &StageRefDatum{StageId: string(f.stageID)}}}
-
-	case HTTPResponse:
-		// TODO
-		log.Fatalf("Not currently supported!")
-		return nil
-
-		//return &Datum{Val: &Datum_HttpResp{HttpResp: &HTTPRespDatum{Body: future.Body, Headers: future.Headers, StatusCode: future.StatusCode}}}
-
-	case HTTPRequest:
-		// TODO
-		log.Fatalf("Not currently supported!")
-		return nil
-
-	default:
-		b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
-		return &Datum{Val: &Datum_Blob{Blob: &BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}}}
-	}
-}
-
 func (cs *completerServiceClient) createFlow(fid string) flowID {
 	res := &CreateGraphResponse{}
 	req := cs.newHTTPReq("/flows", &CreateGraphRequest{FunctionId: fid})
@@ -154,12 +123,10 @@ func (cs *completerServiceClient) emptyFuture(fid flowID, loc *codeLoc) stageID 
 
 func (cs *completerServiceClient) completedValue(fid flowID, value interface{}, loc *codeLoc) stageID {
 	res := &AddStageResponse{}
-	_, isErr := value.(error)
-
 	msg := &AddCompletedValueStageRequest{
 		CodeLocation: loc.String(),
 		FlowId:       string(fid),
-		Value:        &CompletionResult{Successful: !isErr, Datum: cs.datumFromValue(fid, value)},
+		Value:        cs.completionResultForValue(fid, value),
 	}
 
 	req := cs.newHTTPReq(fmt.Sprintf("/flows/%s/value", fid), msg)
@@ -256,9 +223,39 @@ func (cs *completerServiceClient) exceptionallyCompose(fid flowID, sid stageID, 
 	return cs.addStageWithClosure(fid, CompletionOperation_exceptionallyCompose, fn, loc, stageList(sid))
 }
 
-func (cs *completerServiceClient) complete(fid flowID, sid stageID, val interface{}, loc *codeLoc) bool {
-	// TODO
-	panic("Not implemented!")
+func (cs *completerServiceClient) completionResultForValue(fid flowID, value interface{}) *CompletionResult {
+	var datum *Datum
+	switch v := value.(type) {
+	case *flowFuture:
+		datum = &Datum{Val: &Datum_StageRef{StageRef: &StageRefDatum{StageId: string(v.stageID)}}}
+
+	default:
+		if value == nil {
+			datum = &Datum{Val: &Datum_Empty{}}
+		} else {
+			b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
+			datum = &Datum{Val: &Datum_Blob{Blob: &BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}}}
+		}
+	}
+
+	_, isErr := value.(error)
+	return &CompletionResult{Successful: !isErr, Datum: datum}
+}
+
+func (cs *completerServiceClient) complete(fid flowID, sid stageID, value interface{}, loc *codeLoc) bool {
+
+	res := &CompleteStageExternallyResponse{}
+	msg := &CompleteStageExternallyRequest{
+		CodeLocation: loc.String(),
+		FlowId:       string(fid),
+		StageId:      string(sid),
+		Value:        cs.completionResultForValue(fid, value),
+	}
+
+	path := fmt.Sprintf("/flows/%s/stages/%s/complete", string(fid), string(sid))
+	req := cs.newHTTPReq(path, msg)
+	cs.makeRequest(req, res)
+	return res.Successful
 }
 
 func (cs *completerServiceClient) invokeFunction(fid flowID, functionID string, req *HTTPRequest, loc *codeLoc) stageID {

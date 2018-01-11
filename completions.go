@@ -93,7 +93,7 @@ type Flow interface {
 	InvokeFunction(functionID string, req *HTTPRequest) FlowFuture
 	Supply(action interface{}) FlowFuture
 	Delay(duration time.Duration) FlowFuture
-	CompletedValue(value interface{}) FlowFuture // value of error indicates failed future
+	CompletedValue(value interface{}) FlowFuture // value can be an error
 	EmptyFuture() FlowFuture
 	AllOf(futures ...FlowFuture) FlowFuture
 	AnyOf(futures ...FlowFuture) FlowFuture
@@ -115,6 +115,7 @@ type FlowFuture interface {
 	Handle(action interface{}) FlowFuture
 	Exceptionally(action interface{}) FlowFuture
 	ExceptionallyCompose(action interface{}) FlowFuture
+	Complete(value interface{}) bool
 }
 
 type HTTPRequest struct {
@@ -292,4 +293,8 @@ func (f *flowFuture) ExceptionallyCompose(action interface{}) FlowFuture {
 	sid := f.completer.exceptionallyCompose(f.flowID, f.stageID, action, newCodeLoc())
 	// no type information available for inner future
 	return &flowFuture{flow: cf, stageID: sid}
+}
+
+func (f *flowFuture) Complete(value interface{}) bool {
+	return f.completer.complete(f.flowID, f.stageID, value, newCodeLoc())
 }
