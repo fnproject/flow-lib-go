@@ -51,7 +51,7 @@ func (c *HTTPBlobStoreClient) WriteBlob(prefix string, contentType string, bytes
 	defer r.Body.Close()
 
 	if r.StatusCode != 200 {
-		log.Fatalf("Got %d response from blobstore", r.StatusCode)
+		log.Fatalf("Write failed, got %d response from blobstore", r.StatusCode)
 	}
 
 	res := &BlobResponse{}
@@ -72,7 +72,7 @@ func (c *HTTPBlobStoreClient) ReadBlob(prefix string, blobID string, expectedCon
 	defer r.Body.Close()
 
 	if r.StatusCode != 200 {
-		log.Fatalf("Got %d response from blobstore", r.StatusCode)
+		log.Fatalf("Read failed, got %d response from blobstore", r.StatusCode)
 	}
 
 	bodyReader(r.Body)
