@@ -8,10 +8,15 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	apiClient "github.com/fnproject/flow-lib-go/client"
+	flowSvc "github.com/fnproject/flow-lib-go/client/flow_service"
+	flowModels "github.com/fnproject/flow-lib-go/models"
 )
 
 var hc = &http.Client{
@@ -32,6 +37,12 @@ func newCompleterClient() completerClient {
 	if completerURL, ok = os.LookupEnv("COMPLETER_BASE_URL"); !ok {
 		log.Fatal("Missing COMPLETER_BASE_URL configuration in environment!")
 	}
+	cURL, err := url.Parse(completerURL)
+	if err != nil {
+		log.Fatal("Invalid COMPLETER_BASE_URL provided!")
+	}
+	cfg := apiClient.DefaultTransportConfig().WithHost(cURL.Host).WithBasePath(cURL.Path)
+	sc := apiClient.NewHTTPClientWithConfig(nil, cfg)
 
 	return &completerServiceClient{
 		url:      completerURL,
@@ -47,6 +58,7 @@ func newCompleterClient() completerClient {
 				ExpectContinueTimeout: 1 * time.Second,
 			},
 		},
+		sc:       sc,
 		bsClient: newHTTPBlobStoreClient(fmt.Sprintf("%s/blobs", completerURL)),
 	}
 }
@@ -93,6 +105,7 @@ type completerServiceClient struct {
 	url      string
 	protocol *completerProtocol
 	hc       *http.Client
+	sc       *apiClient.Flow
 	bsClient BlobStoreClient
 }
 
@@ -103,6 +116,7 @@ func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http
 		panic("Failed to encode request object")
 	}
 
+	debug(fmt.Sprintf("Posting body %v", body.String()))
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		panic("Failed to create request object")
@@ -111,6 +125,16 @@ func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http
 }
 
 func (cs *completerServiceClient) createFlow(fid string) flowID {
+	req := &flowModels.ModelCreateGraphRequest{FunctionID: fid}
+	p := &flowSvc.CreateGraphParams{Body: req}
+	ok, err := cs.sc.FlowService.CreateGraph(p)
+	if err != nil {
+		log.Fatalf("Failed to create flow: %v", err)
+	}
+	return flowID(ok.Payload.FlowID)
+}
+
+func (cs *completerServiceClient) createFlowOld(fid string) flowID {
 	res := &CreateGraphResponse{}
 	req := cs.newHTTPReq("/flows", &CreateGraphRequest{FunctionId: fid})
 	cs.makeRequest(req, res)
@@ -224,17 +248,17 @@ func (cs *completerServiceClient) exceptionallyCompose(fid flowID, sid stageID, 
 }
 
 func (cs *completerServiceClient) completionResultForValue(fid flowID, value interface{}) *CompletionResult {
-	var datum *Datum
+	datum := new(Datum)
 	switch v := value.(type) {
 	case *flowFuture:
-		datum = &Datum{Val: &Datum_StageRef{StageRef: &StageRefDatum{StageId: string(v.stageID)}}}
+		datum.Val = &Datum_StageRef{&StageRefDatum{StageId: string(v.stageID)}}
 
 	default:
 		if value == nil {
-			datum = &Datum{Val: &Datum_Empty{}}
+			datum = &Datum{&Datum_Empty{&EmptyDatum{}}}
 		} else {
 			b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
-			datum = &Datum{Val: &Datum_Blob{Blob: &BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}}}
+			datum.Val = &Datum_Blob{&BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}}
 		}
 	}
 
@@ -319,7 +343,7 @@ func (cs *completerServiceClient) makeRequest(req *http.Request, resp interface{
 	defer r.Body.Close()
 
 	if r.StatusCode != 200 {
-		log.Fatalf("Got %d response from blobstore", r.StatusCode)
+		log.Fatalf("Got %d response from flow server", r.StatusCode)
 	}
 	err = json.NewDecoder(r.Body).Decode(resp)
 	if err != nil {
