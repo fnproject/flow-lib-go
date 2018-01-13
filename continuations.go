@@ -136,9 +136,9 @@ func handleContinuation(codec codec) {
 	result, err := invoke(decoded[0], decoded[1:]...)
 	// stages can only receive one value for a completion
 	if err != nil {
-		encodeDatum(err)
+		encodeDatum(codec.out(), err)
 	} else {
-		encodeDatum(result)
+		encodeDatum(codec.out(), result)
 	}
 }
 

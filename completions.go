@@ -1,15 +1,18 @@
 package flows
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"reflect"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
+
+	fdk "github.com/fnproject/fdk-go"
 )
 
 var debugMtx = &sync.Mutex{}
@@ -46,18 +49,21 @@ func CurrentFlow() Flow {
 	return cf
 }
 
-func WithFlow(fn func()) {
-	codec := newCodec()
-	if codec.isContinuation() {
-		initFlow(codec, false)
-		handleContinuation(codec)
-		return
-	}
-	initFlow(codec, true)
-	defer cf.commit()
-	debug("Invoking user's main flow function")
-	fn()
-	debug("Completed invocation of user's main flow function")
+func WithFlow(fn fdk.Handler) fdk.Handler {
+	return fdk.HandlerFunc(func(ctx context.Context, in io.Reader, out io.Writer) {
+		codec := newCodec(ctx, in, out)
+		if codec.isContinuation() {
+			initFlow(codec, false)
+			handleContinuation(codec)
+			return
+		}
+		initFlow(codec, true)
+		defer cf.commit()
+		debug("Invoking user's main flow function")
+		// TODO do we want separate reader/writer here?
+		fn.Serve(ctx, in, out)
+		debug("Completed invocation of user's main flow function")
+	})
 }
 
 func initFlow(codec codec, shouldCreate bool) {
@@ -77,17 +83,6 @@ func initFlow(codec codec, shouldCreate bool) {
 		flowID:    flowID,
 		codec:     codec,
 	}
-}
-
-// case insensitive lookup
-func lookupEnv(key string) (string, bool) {
-	for _, e := range os.Environ() {
-		kv := strings.SplitN(e, "=", 2)
-		if strings.ToLower(kv[0]) == strings.ToLower(key) {
-			return kv[1], true
-		}
-	}
-	return "", false
 }
 
 type Flow interface {

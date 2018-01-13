@@ -8,20 +8,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/textproto"
-	"os"
 	"reflect"
 	"strconv"
 )
 
 type datum interface {
-	Encode(val interface{}) bool
+	Encode(w io.Writer, val interface{}) bool
 	Decode(reflect.Type, io.Reader, *textproto.MIMEHeader) (interface{}, bool)
 }
 
-func encodeDatum(val interface{}) {
+func encodeDatum(writer io.Writer, val interface{}) {
 	debug(fmt.Sprintf("Encoding datum of go type %v", reflect.TypeOf(val)))
 	for _, t := range datumTypes {
-		if t.Encode(val) {
+		if t.Encode(writer, val) {
 			debug(fmt.Sprintf("Encoding result with datum type %v", reflect.TypeOf(t)))
 			return
 		}
@@ -45,14 +44,14 @@ var datumTypes = []datum{new(emptyDatum), new(errorDatum), new(stageDatum), new(
 
 type emptyDatum struct{}
 
-func (d *emptyDatum) Encode(val interface{}) bool {
+func (d *emptyDatum) Encode(writer io.Writer, val interface{}) bool {
 	if val != nil {
 		return false
 	}
-	fmt.Printf("HTTP/1.1 200\r\n")
-	fmt.Printf("%s: %s\r\n", DatumTypeHeader, EmptyDatumHeader)
-	fmt.Printf("%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
-	fmt.Printf("\r\n")
+	fmt.Fprintf(writer, "HTTP/1.1 200\r\n")
+	fmt.Fprintf(writer, "%s: %s\r\n", DatumTypeHeader, EmptyDatumHeader)
+	fmt.Fprintf(writer, "%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
+	fmt.Fprintf(writer, "\r\n")
 	return true
 }
 
@@ -65,28 +64,28 @@ func (d *emptyDatum) Decode(argType reflect.Type, reader io.Reader, header *text
 
 type blobDatum struct{}
 
-func (d *blobDatum) Encode(val interface{}) bool {
+func (d *blobDatum) Encode(writer io.Writer, val interface{}) bool {
 	// errors are encoded as string blob datums
 	if err, isErr := val.(error); isErr {
-		buf := encodeGob(err.Error())
-		fmt.Printf("HTTP/1.1 200\r\n")
-		fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
-		fmt.Printf("Content-Length: %d\r\n", buf.Len())
-		fmt.Printf("%s: %s\r\n", DatumTypeHeader, BlobDatumHeader)
-		fmt.Printf("%s: %s\r\n", ResultStatusHeader, FailureHeaderValue)
-		fmt.Printf("\r\n")
-		buf.WriteTo(os.Stdout)
+		buf := encodeGob(err.Error()) // TODO wasteful
+		fmt.Fprintf(writer, "HTTP/1.1 200\r\n")
+		fmt.Fprintf(writer, "%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
+		fmt.Fprintf(writer, "Content-Length: %d\r\n", buf.Len())
+		fmt.Fprintf(writer, "%s: %s\r\n", DatumTypeHeader, BlobDatumHeader)
+		fmt.Fprintf(writer, "%s: %s\r\n", ResultStatusHeader, FailureHeaderValue)
+		fmt.Fprintf(writer, "\r\n")
+		buf.WriteTo(writer)
 		return true
 	}
 
-	buf := encodeGob(val)
-	fmt.Printf("HTTP/1.1 200\r\n")
-	fmt.Printf("%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
-	fmt.Printf("Content-Length: %d\r\n", buf.Len())
-	fmt.Printf("%s: %s\r\n", DatumTypeHeader, BlobDatumHeader)
-	fmt.Printf("%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
-	fmt.Printf("\r\n")
-	buf.WriteTo(os.Stdout)
+	buf := encodeGob(val) // TODO wasteful
+	fmt.Fprintf(writer, "HTTP/1.1 200\r\n")
+	fmt.Fprintf(writer, "%s: %s\r\n", ContentTypeHeader, GobMediaHeader)
+	fmt.Fprintf(writer, "Content-Length: %d\r\n", buf.Len())
+	fmt.Fprintf(writer, "%s: %s\r\n", DatumTypeHeader, BlobDatumHeader)
+	fmt.Fprintf(writer, "%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
+	fmt.Fprintf(writer, "\r\n")
+	buf.WriteTo(writer)
 	return true
 }
 
@@ -110,7 +109,7 @@ func (d *blobDatum) Decode(argType reflect.Type, reader io.Reader, header *textp
 
 type errorDatum struct{}
 
-func (d *errorDatum) Encode(val interface{}) bool {
+func (d *errorDatum) Encode(io.Writer, interface{}) bool {
 	// error datums are only currently generated on the server-side
 	return false
 }
@@ -133,14 +132,14 @@ func (d *errorDatum) Decode(argType reflect.Type, reader io.Reader, header *text
 
 type stageDatum struct{}
 
-func (d *stageDatum) Encode(val interface{}) bool {
+func (d *stageDatum) Encode(writer io.Writer, val interface{}) bool {
 	if cf, ok := val.(*flowFuture); ok {
 		debug(fmt.Sprintf("Returning stage ref %s", cf.stageID))
-		fmt.Printf("HTTP/1.1 200\r\n")
-		fmt.Printf("%s: %s\r\n", DatumTypeHeader, StageRefDatumHeader)
-		fmt.Printf("%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
-		fmt.Printf("%s: %s\r\n", StageIDHeader, cf.stageID)
-		fmt.Printf("\r\n")
+		fmt.Fprintf(writer, "HTTP/1.1 200\r\n")
+		fmt.Fprintf(writer, "%s: %s\r\n", DatumTypeHeader, StageRefDatumHeader)
+		fmt.Fprintf(writer, "%s: %s\r\n", ResultStatusHeader, SuccessHeaderValue)
+		fmt.Fprintf(writer, "%s: %s\r\n", StageIDHeader, cf.stageID)
+		fmt.Fprintf(writer, "\r\n")
 		return true
 	}
 	return false
@@ -162,7 +161,7 @@ func (d *stageDatum) Decode(argType reflect.Type, reader io.Reader, header *text
 
 type httpReqDatum struct{}
 
-func (d *httpReqDatum) Encode(val interface{}) bool {
+func (d *httpReqDatum) Encode(io.Writer, interface{}) bool {
 	return false
 }
 
@@ -196,7 +195,7 @@ func (d *httpReqDatum) Decode(argType reflect.Type, reader io.Reader, header *te
 
 type httpRespDatum struct{}
 
-func (d *httpRespDatum) Encode(val interface{}) bool {
+func (d *httpRespDatum) Encode(io.Writer, interface{}) bool {
 	return false
 }
 
