@@ -49,7 +49,7 @@ func WithFlow(fn func()) {
 	codec := newCodec()
 	if codec.isContinuation() {
 		initFlow(codec, false)
-		handleContinuation(codec)
+		handleInvocation(codec)
 		return
 	}
 	initFlow(codec, true)

@@ -55,18 +55,6 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 	return &completerProtocol{baseURL: baseURL}
 }
 
-type continuationRef struct {
-	ID string `json:"action-id"`
-}
-
-func (cr *continuationRef) getKey() string {
-	return cr.ID
-}
-
-func newContinuationRef(action interface{}) *continuationRef {
-	return &continuationRef{ID: getActionID(action)}
-}
-
 func (p *completerProtocol) parseFlowID(res *http.Response) flowID {
 
 	return flowID(res.Header.Get(FlowIDHeader))

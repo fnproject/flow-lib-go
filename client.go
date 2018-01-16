@@ -41,7 +41,10 @@ func newCompleterClient() completerClient {
 	if err != nil {
 		log.Fatal("Invalid COMPLETER_BASE_URL provided!")
 	}
-	cfg := apiClient.DefaultTransportConfig().WithHost(cURL.Host).WithBasePath(cURL.Path)
+	cfg := apiClient.DefaultTransportConfig().
+		WithHost(cURL.Host).
+		WithBasePath(cURL.Path).
+		WithSchemes([]string{cURL.Scheme})
 	sc := apiClient.NewHTTPClientWithConfig(nil, cfg)
 
 	return &completerServiceClient{
@@ -126,7 +129,8 @@ func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http
 
 func (cs *completerServiceClient) createFlow(fid string) flowID {
 	req := &flowModels.ModelCreateGraphRequest{FunctionID: fid}
-	p := &flowSvc.CreateGraphParams{Body: req}
+	p := flowSvc.NewCreateGraphParams().WithBody(req)
+
 	ok, err := cs.sc.FlowService.CreateGraph(p)
 	if err != nil {
 		log.Fatalf("Failed to create flow: %v", err)
@@ -134,28 +138,42 @@ func (cs *completerServiceClient) createFlow(fid string) flowID {
 	return flowID(ok.Payload.FlowID)
 }
 
-func (cs *completerServiceClient) createFlowOld(fid string) flowID {
-	res := &CreateGraphResponse{}
-	req := cs.newHTTPReq("/flows", &CreateGraphRequest{FunctionId: fid})
-	cs.makeRequest(req, res)
-	return flowID(res.FlowId)
-}
-
 func (cs *completerServiceClient) emptyFuture(fid flowID, loc *codeLoc) stageID {
 	return cs.addStage(fid, CompletionOperation_externalCompletion, nil, loc, nil)
 }
 
-func (cs *completerServiceClient) completedValue(fid flowID, value interface{}, loc *codeLoc) stageID {
-	res := &AddStageResponse{}
-	msg := &AddCompletedValueStageRequest{
-		CodeLocation: loc.String(),
-		FlowId:       string(fid),
-		Value:        cs.completionResultForValue(fid, value),
+func (cs *completerServiceClient) resultFromValue(fid flowID, value interface{}) *flowModels.ModelCompletionResult {
+	datum := new(flowModels.ModelDatum)
+	switch v := value.(type) {
+	case *flowFuture:
+		datum.StageRef = &flowModels.ModelStageRefDatum{StageID: string(v.stageID)}
+
+	default:
+		if value == nil {
+			datum.Empty = new(flowModels.ModelEmptyDatum)
+		} else {
+			b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
+			datum.Blob = &flowModels.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
+		}
 	}
 
-	req := cs.newHTTPReq(fmt.Sprintf("/flows/%s/value", fid), msg)
-	cs.makeRequest(req, res)
-	return stageID(res.StageId)
+	_, isErr := value.(error)
+	return &flowModels.ModelCompletionResult{Successful: !isErr, Datum: datum}
+}
+
+func (cs *completerServiceClient) completedValue(fid flowID, value interface{}, loc *codeLoc) stageID {
+	req := &flowModels.ModelAddCompletedValueStageRequest{
+		CodeLocation: loc.String(),
+		FlowID:       string(fid),
+		Value:        cs.resultFromValue(fid, value),
+	}
+	p := flowSvc.NewAddValueStageParams().WithFlowID(string(fid)).WithBody(req)
+
+	ok, err := cs.sc.FlowService.AddValueStage(p)
+	if err != nil {
+		log.Fatalf("Failed to add value stage: %v", err)
+	}
+	return stageID(ok.Payload.StageID)
 }
 
 func (cs *completerServiceClient) supply(fid flowID, fn interface{}, loc *codeLoc) stageID {

@@ -7,8 +7,25 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"sync"
 	"time"
 )
+
+var onceBS sync.Once
+var blobStore BlobStoreClient
+
+func GetBlobStore() BlobStoreClient {
+	onceBS.Do(func() {
+		var completerURL string
+		var ok bool
+		if completerURL, ok = os.LookupEnv("COMPLETER_BASE_URL"); !ok {
+			log.Fatal("Missing COMPLETER_BASE_URL configuration in environment!")
+		}
+		blobStore = newHTTPBlobStoreClient(fmt.Sprintf("%s/blobs", completerURL))
+	})
+	return blobStore
+}
 
 type BlobResponse struct {
 	BlobId      string `json:"blob_id"`
