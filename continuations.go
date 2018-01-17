@@ -4,13 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime"
-	"mime/multipart"
-	"os"
 	"reflect"
 	"runtime"
 	dbg "runtime/debug"
-	"strings"
 	"sync"
 )
 
@@ -95,50 +91,6 @@ func invokeFromRegistry(actionID string, args ...interface{}) (interface{}, erro
 		panic("Continuation not registered")
 	} else {
 		return invoke(e, args...)
-	}
-}
-
-func handleContinuation(codec codec) {
-	debug("Handling continuation")
-	cType, ok := codec.getHeader(ContentTypeHeader)
-	if !ok {
-		panic("Missing content type header")
-	}
-	debug(fmt.Sprintf("Handling continuation of type %s", cType))
-	mediaType, params, err := mime.ParseMediaType(cType)
-	if err != nil {
-		panic("Failed to get content type for continuation")
-	}
-	var decoded []interface{}
-	if strings.HasPrefix(mediaType, "multipart/") {
-		mr := multipart.NewReader(os.Stdin, params["boundary"])
-		for {
-			p, err := mr.NextPart()
-			if err != nil {
-				break
-			}
-			var val interface{}
-			if len(decoded) == 0 {
-				debug("Unmarshalling continuation")
-				val = decodeContinuation(p)
-			} else {
-				debug(fmt.Sprintf("Unmarshalling arg %d", len(decoded)))
-				val = decodeContinuationArg(decoded[0], len(decoded)-1, p, &p.Header)
-			}
-			decoded = append(decoded, val)
-		}
-	}
-
-	if len(decoded) < 1 {
-		panic("Invalid multipart continuation")
-	}
-
-	result, err := invoke(decoded[0], decoded[1:]...)
-	// stages can only receive one value for a completion
-	if err != nil {
-		encodeDatum(err)
-	} else {
-		encodeDatum(result)
 	}
 }
 

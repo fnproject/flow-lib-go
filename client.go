@@ -1,34 +1,18 @@
 package flow
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/fnproject/flow-lib-go/blobstore"
-	apiClient "github.com/fnproject/flow-lib-go/client"
-	flowSvc "github.com/fnproject/flow-lib-go/client/flow_service"
-	flowModels "github.com/fnproject/flow-lib-go/models"
+	api "github.com/fnproject/flow-lib-go/client"
+	flows "github.com/fnproject/flow-lib-go/client/flow_service"
+	"github.com/fnproject/flow-lib-go/models"
 )
-
-var hc = &http.Client{
-	Transport: &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Minute,
-		ExpectContinueTimeout: 1 * time.Second,
-	},
-}
 
 func newCompleterClient() completerClient {
 	var completerURL string
@@ -40,26 +24,17 @@ func newCompleterClient() completerClient {
 	if err != nil {
 		log.Fatal("Invalid COMPLETER_BASE_URL provided!")
 	}
-	cfg := apiClient.DefaultTransportConfig().
+
+	cfg := api.DefaultTransportConfig().
 		WithHost(cURL.Host).
 		WithBasePath(cURL.Path).
 		WithSchemes([]string{cURL.Scheme})
-	sc := apiClient.NewHTTPClientWithConfig(nil, cfg)
+
+	sc := api.NewHTTPClientWithConfig(nil, cfg)
 
 	return &completerServiceClient{
 		url:      completerURL,
 		protocol: newCompleterProtocol(completerURL),
-		hc: &http.Client{
-			Transport: &http.Transport{
-				Dial: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).Dial,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ResponseHeaderTimeout: 10 * time.Minute,
-				ExpectContinueTimeout: 1 * time.Second,
-			},
-		},
 		sc:       sc,
 		bsClient: blobstore.GetBlobStore(),
 	}
@@ -68,7 +43,6 @@ func newCompleterClient() completerClient {
 func stageList(stageIDs ...string) []string {
 	data := make([]string, len(stageIDs))
 	for i, stageID := range stageIDs {
-		// assuming little endian
 		data[i] = stageID
 	}
 	return data
@@ -104,13 +78,13 @@ type completerServiceClient struct {
 	url      string
 	protocol *completerProtocol
 	hc       *http.Client
-	sc       *apiClient.Flow
+	sc       *api.Flow
 	bsClient blobstore.BlobStoreClient
 }
 
 func (cs *completerServiceClient) createFlow(functionID string) string {
-	req := &flowModels.ModelCreateGraphRequest{FunctionID: functionID}
-	p := flowSvc.NewCreateGraphParams().WithBody(req)
+	req := &models.ModelCreateGraphRequest{FunctionID: functionID}
+	p := flows.NewCreateGraphParams().WithBody(req)
 
 	ok, err := cs.sc.FlowService.CreateGraph(p)
 	if err != nil {
@@ -124,12 +98,12 @@ func (cs *completerServiceClient) emptyFuture(flowID string, loc *codeLoc) strin
 }
 
 func (cs *completerServiceClient) completedValue(flowID string, value interface{}, loc *codeLoc) string {
-	req := &flowModels.ModelAddCompletedValueStageRequest{
+	req := &models.ModelAddCompletedValueStageRequest{
 		CodeLocation: loc.String(),
 		FlowID:       flowID,
 		Value:        valueToModel(value, flowID, cs.bsClient),
 	}
-	p := flowSvc.NewAddValueStageParams().WithFlowID(flowID).WithBody(req)
+	p := flows.NewAddValueStageParams().WithFlowID(flowID).WithBody(req)
 
 	ok, err := cs.sc.FlowService.AddValueStage(p)
 	if err != nil {
@@ -142,20 +116,15 @@ func (cs *completerServiceClient) supply(flowID string, fn interface{}, loc *cod
 	panic("Not implemented")
 }
 
-func (cs *completerServiceClient) addStageWithClosure(flowID string, op string, fn interface{}, loc *codeLoc, deps []string) string {
-	// b := cs.bsClient.WriteBlob(flowID, JSONMediaHeader, encodeContinuationRef(fn))
-	panic("Not implemented")
-}
-
-func (cs *completerServiceClient) thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	req := &flowModels.ModelAddStageRequest{
+func (cs *completerServiceClient) addStageWithClosure(flowID string, op models.ModelCompletionOperation, fn interface{}, loc *codeLoc, deps ...string) string {
+	req := &models.ModelAddStageRequest{
 		Closure:      closureToModel(fn, flowID, cs.bsClient),
 		CodeLocation: loc.String(),
-		Deps:         nil,
+		Deps:         deps,
 		FlowID:       flowID,
-		Operation:    flowModels.ModelCompletionOperationThenApply,
+		Operation:    op,
 	}
-	p := flowSvc.NewAddStageParams().WithFlowID(flowID).WithBody(req)
+	p := flows.NewAddStageParams().WithFlowID(flowID).WithBody(req)
 
 	ok, err := cs.sc.FlowService.AddStage(p)
 	if err != nil {
@@ -164,52 +133,40 @@ func (cs *completerServiceClient) thenApply(flowID string, stageID string, fn in
 	return ok.Payload.StageID
 }
 
+func (cs *completerServiceClient) thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationThenApply, fn, loc, stageID)
+}
+
 func (cs *completerServiceClient) thenCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenCompose, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationThenCompose, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) whenComplete(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_whenComplete, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationWhenComplete, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) thenAccept(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenAccept, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationThenAccept, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) thenRun(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenRun, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationThenRun, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) acceptEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_acceptEither, fn, loc, stageList(stageID, alt))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationAcceptEither, fn, loc, stageID, altStageID)
 }
 
 func (cs *completerServiceClient) applyToEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_applyToEither, fn, loc, stageList(stageID, alt))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationApplyToEither, fn, loc, stageID, altStageID)
 }
 
 func (cs *completerServiceClient) thenAcceptBoth(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenAcceptBoth, fn, loc, stageList(stageID, alt))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationThenAcceptBoth, fn, loc, stageID, altStageID)
 }
 
 func (cs *completerServiceClient) thenCombine(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenCombine, fn, loc, stageList(stageID, alt))
-}
-
-func joinedCids(stageIDs []string) string {
-	var stageIDStrs []string
-	for _, stageID := range stageIDs {
-		stageIDStrs = append(stageIDStrs, stageID)
-	}
-	return strings.Join(stageIDStrs, ",")
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationThenCombine, fn, loc, stageID, altStageID)
 }
 
 func (cs *completerServiceClient) allOf(flowID string, stages []string, loc *codeLoc) string {
@@ -223,18 +180,15 @@ func (cs *completerServiceClient) anyOf(flowID string, stages []string, loc *cod
 }
 
 func (cs *completerServiceClient) handle(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_handle, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationHandle, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) exceptionally(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_exceptionally, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationExceptionally, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) exceptionallyCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_exceptionallyCompose, fn, loc, stageList(stageID))
+	return cs.addStageWithClosure(flowID, models.ModelCompletionOperationExceptionallyCompose, fn, loc, stageID)
 }
 
 func (cs *completerServiceClient) complete(flowID string, stageID string, value interface{}, loc *codeLoc) bool {
@@ -260,58 +214,27 @@ func (cs *completerServiceClient) getAsync(flowID string, stageID string, rType 
 }
 
 func (cs *completerServiceClient) get(flowID string, stageID string, rType reflect.Type, valueCh chan interface{}, errorCh chan error) {
-	panic("Not implemented")
+	p := flows.NewAwaitStageResultParams().WithFlowID(flowID).WithStageID(stageID)
+	ok, err := cs.sc.FlowService.AwaitStageResult(p)
+	if err != nil {
+		log.Fatalf("Failed to add value stage: %v", err)
+	}
 
-	/*
-		debug(fmt.Sprintf("Getting result for stage %s and flow %s", stageID, flowID))
-		req := cs.protocol.getStageReq(flowID, stageID)
-		res, err := hc.Do(req)
-		if err != nil {
-			panic("Failed request: " + err.Error())
-		}
-		defer res.Body.Close()
-
-		debug(fmt.Sprintf("Getting stage value of type %s", res.Header.Get(DatumTypeHeader)))
-		hdr := textproto.MIMEHeader(res.Header)
-		val := decodeDatum(rType, res.Body, &hdr)
-		if err, isErr := val.(error); isErr {
-			debug("Getting failed result")
-			errorCh <- err
-		} else {
-			debug("Getting successful result")
-			valueCh <- val
-		}
-	*/
+	result := ok.Payload.Result
+	val := result.DecodeValue(flowID, rType, cs.bsClient)
+	if result.Successful {
+		debug("Getting successful result")
+		valueCh <- val
+	} else {
+		debug("Getting failed result")
+		errorCh <- err
+	}
 }
 
 func (cs *completerServiceClient) commit(flowID string) {
-	p := flowSvc.NewCommitParams().WithFlowID(flowID)
+	p := flows.NewCommitParams().WithFlowID(flowID)
 	_, err := cs.sc.FlowService.Commit(p)
 	if err != nil {
 		log.Fatalf("Failed to create flow: %v", err)
-	}
-}
-
-func (cs *completerServiceClient) safeReq(req *http.Request) *http.Response {
-	res, err := hc.Do(req)
-	if err != nil {
-		panic("Failed request: " + err.Error())
-	}
-	return res
-}
-
-func (cs *completerServiceClient) makeRequest(req *http.Request, resp interface{}) {
-	r, err := hc.Do(req)
-	if err != nil {
-		panic("Failed request: " + err.Error())
-	}
-	defer r.Body.Close()
-
-	if r.StatusCode != 200 {
-		log.Fatalf("Got %d response from flow server", r.StatusCode)
-	}
-	err = json.NewDecoder(r.Body).Decode(resp)
-	if err != nil {
-		panic(fmt.Errorf("Failed to deserialize response to %v", reflect.TypeOf(resp)))
 	}
 }
