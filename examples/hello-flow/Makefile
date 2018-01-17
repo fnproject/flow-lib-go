@@ -6,17 +6,17 @@ COMPLETER_SERVER_IP=`docker inspect --type container -f '{{range .NetworkSetting
 # Just builds
 all: deploy
 
-dep: glide.yaml
-	glide install --strip-vendor
+dep:
+	dep ensure
 
 dep-up:
-	glide up --strip-vendor
+	dep ensure --update
 
 test: 
 	go test -v -cover $(GOPACKAGES)
 
 deploy:
-	fn deploy --app go-flow --local
+	fn deploy --app go-flow 
 	fn apps config set go-flow COMPLETER_BASE_URL "http://$(DOCKER_LOCALHOST):8081"
 
 call:

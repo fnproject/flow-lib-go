@@ -17,7 +17,7 @@ $ (fn start > /dev/null 2>&1 &)
 
 sleep 5
 
-# start the completer and point it at the functions server API URL
+# start the Flow Service and point it at the functions server API URL
 $ DOCKER_LOCALHOST=$(docker inspect --type container -f '{{.NetworkSettings.Gateway}}' functions)
 
 $ docker run --rm  \
@@ -25,8 +25,8 @@ $ docker run --rm  \
        -d \
        -e API_URL="http://$DOCKER_LOCALHOST:8080/r" \
        -e no_proxy=$DOCKER_LOCALHOST \
-       --name completer \
-       fnproject/completer:latest
+       --name flow-service \
+       fnproject/flow:latest
 ```
 
 ## Deploy Example
