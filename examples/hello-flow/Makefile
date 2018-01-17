@@ -10,7 +10,7 @@ dep:
 	dep ensure
 
 dep-up:
-	dep ensure --update
+	dep ensure -update
 
 test: 
 	go test -v -cover $(GOPACKAGES)
