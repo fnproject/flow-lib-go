@@ -149,3 +149,8 @@ func valueToModel(value interface{}, flowID string, blobStore blobstore.BlobStor
 	_, isErr := value.(error)
 	return &models.ModelCompletionResult{Successful: !isErr, Datum: datum}
 }
+
+func closureToModel(closure interface{}, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelBlobDatum {
+	b := blobStore.WriteBlob(flowID, GobMediaHeader, encodeContinuationRef(closure))
+	return &models.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
+}

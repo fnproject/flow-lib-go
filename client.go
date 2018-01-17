@@ -75,7 +75,7 @@ func stageList(stageIDs ...string) []string {
 }
 
 type completerClient interface {
-	createFlow(flowID string) string
+	createFlow(functionID string) string
 	commit(flowID string)
 	getAsync(flowID string, stageID string, rType reflect.Type) (chan interface{}, chan error)
 	emptyFuture(flowID string, loc *codeLoc) string
@@ -108,8 +108,8 @@ type completerServiceClient struct {
 	bsClient blobstore.BlobStoreClient
 }
 
-func (cs *completerServiceClient) createFlow(flowID string) string {
-	req := &flowModels.ModelCreateGraphRequest{FunctionID: flowID}
+func (cs *completerServiceClient) createFlow(functionID string) string {
+	req := &flowModels.ModelCreateGraphRequest{FunctionID: functionID}
 	p := flowSvc.NewCreateGraphParams().WithBody(req)
 
 	ok, err := cs.sc.FlowService.CreateGraph(p)
@@ -148,8 +148,20 @@ func (cs *completerServiceClient) addStageWithClosure(flowID string, op string, 
 }
 
 func (cs *completerServiceClient) thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenApply, fn, loc, stageList(stageID))
+	req := &flowModels.ModelAddStageRequest{
+		Closure:      closureToModel(fn, flowID, cs.bsClient),
+		CodeLocation: loc.String(),
+		Deps:         nil,
+		FlowID:       flowID,
+		Operation:    flowModels.ModelCompletionOperationThenApply,
+	}
+	p := flowSvc.NewAddStageParams().WithFlowID(flowID).WithBody(req)
+
+	ok, err := cs.sc.FlowService.AddStage(p)
+	if err != nil {
+		log.Fatalf("Failed to add value stage: %v", err)
+	}
+	return ok.Payload.StageID
 }
 
 func (cs *completerServiceClient) thenCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
