@@ -1,19 +1,28 @@
 package models
 
 import (
+	"encoding/gob"
+	"fmt"
+	"io"
 	"reflect"
+
+	"github.com/fnproject/flow-lib-go/blobstore"
+)
+
+const (
+	GobMediaHeader = "application/x-gob"
 )
 
 type Decoder interface {
-	DecodeResult(t reflect.Type) interface{}
-	DecodeError() error
+	DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{}
+	DecodeError(fid string, blobStore blobstore.BlobStoreClient) error
 }
 
-func (result *ModelCompletionResult) DecodeValue(t reflect.Type) interface{} {
+func (result *ModelCompletionResult) DecodeValue(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	if result.Successful {
-		return result.Datum.DecodeResult(t)
+		return result.Datum.DecodeResult(fid, t, blobStore)
 	}
-	return result.Datum.DecodeError()
+	return result.Datum.DecodeError(fid, blobStore)
 }
 
 func (d *ModelDatum) decoder() Decoder {
@@ -33,65 +42,90 @@ func (d *ModelDatum) decoder() Decoder {
 	panic("Received empty datum!")
 }
 
-func (d *ModelDatum) DecodeResult(t reflect.Type) interface{} {
+func (d *ModelDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	if d.Empty != nil {
 		return nil
 	}
-	return d.decoder().DecodeResult(t)
+	return d.decoder().DecodeResult(fid, t, blobStore)
 }
 
-func (d *ModelDatum) DecodeError() error {
+func (d *ModelDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	if d.Empty != nil {
 		return nil
 	}
-	return d.decoder().DecodeError()
+	return d.decoder().DecodeError(fid, blobStore)
 }
 
-func (d *ModelBlobDatum) DecodeResult(t reflect.Type) interface{} {
+func (d *ModelBlobDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) (result interface{}) {
+	if d.ContentType != GobMediaHeader {
+		panic(fmt.Sprintf("Unsupported blob content type %v", d.ContentType))
+	}
+	blobStore.ReadBlob(fid, d.BlobID, d.ContentType, func(body io.ReadCloser) { result = decodeGob(body, t) })
+	return
+}
 
+func (d *ModelBlobDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	return nil
 }
 
-func (d *ModelBlobDatum) DecodeError() error {
+func (d *ModelErrorDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	return nil
 }
 
-func (d *ModelErrorDatum) DecodeResult(t reflect.Type) interface{} {
+func (d *ModelErrorDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	return nil
 }
 
-func (d *ModelErrorDatum) DecodeError() error {
+func (d *ModelHTTPReqDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	return nil
 }
 
-func (d *ModelHTTPReqDatum) DecodeError() error {
+func (d *ModelHTTPReqDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	return nil
 }
 
-func (d *ModelHTTPReqDatum) DecodeResult(t reflect.Type) interface{} {
+func (d *ModelHTTPRespDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	return nil
 }
 
-func (d *ModelHTTPRespDatum) DecodeError() error {
+func (d *ModelHTTPRespDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	return nil
 }
 
-func (d *ModelHTTPRespDatum) DecodeResult(t reflect.Type) interface{} {
+func (d *ModelStageRefDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	return nil
 }
 
-func (d *ModelStageRefDatum) DecodeError() error {
+func (d *ModelStageRefDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	return nil
 }
 
-func (d *ModelStageRefDatum) DecodeResult(t reflect.Type) interface{} {
+func (d *ModelStatusDatum) DecodeError(fid string, blobStore blobstore.BlobStoreClient) error {
 	return nil
 }
 
-func (d *ModelStatusDatum) DecodeError() error {
+func (d *ModelStatusDatum) DecodeResult(fid string, t reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	return nil
 }
 
-func (d *ModelStatusDatum) DecodeResult(t reflect.Type) interface{} {
-	return nil
+func decodeGob(r io.Reader, t reflect.Type) interface{} {
+	if t == nil {
+		// use GetType(reflect.Type)
+		panic("Decode type could not be inferred")
+	}
+	dec := gob.NewDecoder(r)
+	var v reflect.Value
+	if t.Kind() == reflect.Ptr {
+		v = reflect.New(t.Elem())
+	} else {
+		v = reflect.New(t)
+	}
+	if err := dec.Decode(v.Interface()); err != nil {
+		panic("Failed to decode gob: " + err.Error())
+	}
+
+	if t.Kind() == reflect.Ptr {
+		return v.Interface()
+	}
+	return v.Elem().Interface()
 }

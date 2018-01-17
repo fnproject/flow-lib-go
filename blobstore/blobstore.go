@@ -1,4 +1,4 @@
-package flows
+package blobstore
 
 import (
 	"encoding/json"

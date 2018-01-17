@@ -58,7 +58,7 @@ It has these top-level messages:
 	RuntimeInvokeStageRequest
 	RuntimeInvokeStageResponse
 */
-package flows
+package flow
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

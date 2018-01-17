@@ -1,4 +1,4 @@
-package flows
+package flow
 
 import (
 	"errors"

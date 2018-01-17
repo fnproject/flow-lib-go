@@ -1,4 +1,4 @@
-package flows
+package flow
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	"reflect"
 	dbg "runtime/debug"
 
+	"github.com/fnproject/flow-lib-go/blobstore"
 	"github.com/fnproject/flow-lib-go/models"
 )
 
@@ -51,13 +52,13 @@ func (in *StageInvocation) invoke() {
 		}
 	}
 
-	GetBlobStore().ReadBlob(in.FlowID, in.Closure.Blob.BlobID, JSONMediaHeader, slurp)
+	blobstore.GetBlobStore().ReadBlob(in.FlowID, in.Closure.Blob.BlobID, JSONMediaHeader, slurp)
 
 	argTypes := continuationArgTypes(actionFunc)
 	var args []interface{}
 	for i, arg := range in.Args {
 		debug(fmt.Sprintf("Decoding arg of type %v", argTypes[i]))
-		args = append(args, arg.DecodeValue(argTypes[i]))
+		args = append(args, arg.DecodeValue(in.FlowID, argTypes[i], blobstore.GetBlobStore()))
 	}
 
 	result, err := invokeFunc(actionFunc, args)

@@ -1,4 +1,4 @@
-package flows
+package flow
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fnproject/flow-lib-go/blobstore"
 	apiClient "github.com/fnproject/flow-lib-go/client"
 	flowSvc "github.com/fnproject/flow-lib-go/client/flow_service"
 	flowModels "github.com/fnproject/flow-lib-go/models"
@@ -62,7 +63,7 @@ func newCompleterClient() completerClient {
 			},
 		},
 		sc:       sc,
-		bsClient: newHTTPBlobStoreClient(fmt.Sprintf("%s/blobs", completerURL)),
+		bsClient: blobstore.GetBlobStore(),
 	}
 }
 
@@ -109,7 +110,7 @@ type completerServiceClient struct {
 	protocol *completerProtocol
 	hc       *http.Client
 	sc       *apiClient.Flow
-	bsClient BlobStoreClient
+	bsClient blobstore.BlobStoreClient
 }
 
 func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http.Request {
