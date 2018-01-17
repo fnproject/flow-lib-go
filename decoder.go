@@ -130,3 +130,22 @@ func handleInvocation(codec codec) {
 
 	in.invoke()
 }
+
+func valueToModel(value interface{}, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelCompletionResult {
+	datum := new(models.ModelDatum)
+	switch v := value.(type) {
+	case *flowFuture:
+		datum.StageRef = &models.ModelStageRefDatum{StageID: string(v.stageID)}
+
+	default:
+		if value == nil {
+			datum.Empty = new(models.ModelEmptyDatum)
+		} else {
+			b := blobStore.WriteBlob(flowID, GobMediaHeader, encodeGob(value))
+			datum.Blob = &models.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
+		}
+	}
+
+	_, isErr := value.(error)
+	return &models.ModelCompletionResult{Successful: !isErr, Datum: datum}
+}

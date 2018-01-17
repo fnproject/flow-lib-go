@@ -1,7 +1,6 @@
 package flow
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -109,21 +108,6 @@ type completerServiceClient struct {
 	bsClient blobstore.BlobStoreClient
 }
 
-func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http.Request {
-	url := fmt.Sprintf("%s/v1%s", cs.url, path)
-	body := new(bytes.Buffer)
-	if err := json.NewEncoder(body).Encode(msg); err != nil {
-		panic("Failed to encode request object")
-	}
-
-	debug(fmt.Sprintf("Posting body %v", body.String()))
-	req, err := http.NewRequest("POST", url, body)
-	if err != nil {
-		panic("Failed to create request object")
-	}
-	return req
-}
-
 func (cs *completerServiceClient) createFlow(flowID string) string {
 	req := &flowModels.ModelCreateGraphRequest{FunctionID: flowID}
 	p := flowSvc.NewCreateGraphParams().WithBody(req)
@@ -139,30 +123,11 @@ func (cs *completerServiceClient) emptyFuture(flowID string, loc *codeLoc) strin
 	panic("Not implemented")
 }
 
-func (cs *completerServiceClient) resultFromValue(flowID string, value interface{}) *flowModels.ModelCompletionResult {
-	datum := new(flowModels.ModelDatum)
-	switch v := value.(type) {
-	case *flowFuture:
-		datum.StageRef = &flowModels.ModelStageRefDatum{StageID: string(v.stageID)}
-
-	default:
-		if value == nil {
-			datum.Empty = new(flowModels.ModelEmptyDatum)
-		} else {
-			b := cs.bsClient.WriteBlob(flowID, GobMediaHeader, encodeGob(value))
-			datum.Blob = &flowModels.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
-		}
-	}
-
-	_, isErr := value.(error)
-	return &flowModels.ModelCompletionResult{Successful: !isErr, Datum: datum}
-}
-
 func (cs *completerServiceClient) completedValue(flowID string, value interface{}, loc *codeLoc) string {
 	req := &flowModels.ModelAddCompletedValueStageRequest{
 		CodeLocation: loc.String(),
 		FlowID:       flowID,
-		Value:        cs.resultFromValue(flowID, value),
+		Value:        valueToModel(value, flowID, cs.bsClient),
 	}
 	p := flowSvc.NewAddValueStageParams().WithFlowID(flowID).WithBody(req)
 
@@ -308,7 +273,11 @@ func (cs *completerServiceClient) get(flowID string, stageID string, rType refle
 }
 
 func (cs *completerServiceClient) commit(flowID string) {
-	panic("Not implemented")
+	p := flowSvc.NewCommitParams().WithFlowID(flowID)
+	_, err := cs.sc.FlowService.Commit(p)
+	if err != nil {
+		log.Fatalf("Failed to create flow: %v", err)
+	}
 }
 
 func (cs *completerServiceClient) safeReq(req *http.Request) *http.Response {
