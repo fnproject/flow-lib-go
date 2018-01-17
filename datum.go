@@ -156,7 +156,7 @@ func (d *stageDatum) Decode(argType reflect.Type, reader io.Reader, header *text
 	}
 	return flowFuture{
 		flow:    CurrentFlow().(*flow),
-		stageID: stageID(sid),
+		stageID: sid,
 	}, true
 }
 

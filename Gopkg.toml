@@ -1,26 +1,10 @@
 [[constraint]]
-  branch = "master"
-  name = "github.com/golang/protobuf"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/mwitkow/go-proto-validators"
-
-[[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.0"
 
 [[constraint]]
   branch = "master"
   name = "golang.org/x/net"
-
-[[constraint]]
-  branch = "master"
-  name = "google.golang.org/genproto"
-
-[[constraint]]
-  name = "google.golang.org/grpc"
-  version = "1.9.1"
 
 [[constraint]]
   branch = "master"

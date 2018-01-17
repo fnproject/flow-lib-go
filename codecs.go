@@ -18,7 +18,7 @@ type codec interface {
 	getRoute() string
 	isContinuation() bool
 	getHeader(string) (string, bool)
-	getFlowID() flowID
+	getFlowID() string
 }
 
 type defaultCodec struct {
@@ -49,12 +49,12 @@ func (c *defaultCodec) isContinuation() bool {
 	return ok
 }
 
-func (c *defaultCodec) getFlowID() flowID {
+func (c *defaultCodec) getFlowID() string {
 	fid, ok := c.getHeader(FlowIDHeader)
 	if !ok {
 		panic("Missing flow ID in continuation")
 	}
-	return flowID(fid)
+	return fid
 }
 
 func (c *defaultCodec) getHeader(header string) (string, bool) {

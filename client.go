@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/textproto"
 	"net/url"
 	"os"
 	"reflect"
@@ -67,42 +66,39 @@ func newCompleterClient() completerClient {
 	}
 }
 
-type flowID string
-type stageID string
-
-func stageList(sids ...stageID) []string {
-	data := make([]string, len(sids))
-	for i, sid := range sids {
+func stageList(stageIDs ...string) []string {
+	data := make([]string, len(stageIDs))
+	for i, stageID := range stageIDs {
 		// assuming little endian
-		data[i] = string(sid)
+		data[i] = stageID
 	}
 	return data
 }
 
 type completerClient interface {
-	createFlow(fid string) flowID
-	commit(fid flowID)
-	getAsync(fid flowID, sid stageID, rType reflect.Type) (chan interface{}, chan error)
-	emptyFuture(fid flowID, loc *codeLoc) stageID
-	completedValue(fid flowID, value interface{}, loc *codeLoc) stageID
-	delay(fid flowID, duration time.Duration, loc *codeLoc) stageID
-	supply(fid flowID, fn interface{}, loc *codeLoc) stageID
-	thenApply(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	thenCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	whenComplete(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	thenAccept(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	thenRun(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	acceptEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
-	applyToEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
-	thenAcceptBoth(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
-	invokeFunction(fid flowID, functionID string, req *HTTPRequest, loc *codeLoc) stageID
-	allOf(fid flowID, sids []stageID, loc *codeLoc) stageID
-	anyOf(fid flowID, sids []stageID, loc *codeLoc) stageID
-	handle(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	exceptionally(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	exceptionallyCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID
-	thenCombine(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID
-	complete(fid flowID, sid stageID, val interface{}, loc *codeLoc) bool
+	createFlow(flowID string) string
+	commit(flowID string)
+	getAsync(flowID string, stageID string, rType reflect.Type) (chan interface{}, chan error)
+	emptyFuture(flowID string, loc *codeLoc) string
+	completedValue(flowID string, value interface{}, loc *codeLoc) string
+	delay(flowID string, duration time.Duration, loc *codeLoc) string
+	supply(flowID string, fn interface{}, loc *codeLoc) string
+	thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	thenCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	whenComplete(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	thenAccept(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	thenRun(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	acceptEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
+	applyToEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
+	thenAcceptBoth(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
+	invokeFunction(flowID string, functionID string, req *HTTPRequest, loc *codeLoc) string
+	allOf(flowID string, stages []string, loc *codeLoc) string
+	anyOf(flowID string, stages []string, loc *codeLoc) string
+	handle(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	exceptionally(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	exceptionallyCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string
+	thenCombine(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
+	complete(flowID string, stageID string, val interface{}, loc *codeLoc) bool
 }
 
 type completerServiceClient struct {
@@ -128,22 +124,22 @@ func (cs *completerServiceClient) newHTTPReq(path string, msg interface{}) *http
 	return req
 }
 
-func (cs *completerServiceClient) createFlow(fid string) flowID {
-	req := &flowModels.ModelCreateGraphRequest{FunctionID: fid}
+func (cs *completerServiceClient) createFlow(flowID string) string {
+	req := &flowModels.ModelCreateGraphRequest{FunctionID: flowID}
 	p := flowSvc.NewCreateGraphParams().WithBody(req)
 
 	ok, err := cs.sc.FlowService.CreateGraph(p)
 	if err != nil {
 		log.Fatalf("Failed to create flow: %v", err)
 	}
-	return flowID(ok.Payload.FlowID)
+	return ok.Payload.FlowID
 }
 
-func (cs *completerServiceClient) emptyFuture(fid flowID, loc *codeLoc) stageID {
-	return cs.addStage(fid, CompletionOperation_externalCompletion, nil, loc, nil)
+func (cs *completerServiceClient) emptyFuture(flowID string, loc *codeLoc) string {
+	panic("Not implemented")
 }
 
-func (cs *completerServiceClient) resultFromValue(fid flowID, value interface{}) *flowModels.ModelCompletionResult {
+func (cs *completerServiceClient) resultFromValue(flowID string, value interface{}) *flowModels.ModelCompletionResult {
 	datum := new(flowModels.ModelDatum)
 	switch v := value.(type) {
 	case *flowFuture:
@@ -153,7 +149,7 @@ func (cs *completerServiceClient) resultFromValue(fid flowID, value interface{})
 		if value == nil {
 			datum.Empty = new(flowModels.ModelEmptyDatum)
 		} else {
-			b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
+			b := cs.bsClient.WriteBlob(flowID, GobMediaHeader, encodeGob(value))
 			datum.Blob = &flowModels.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
 		}
 	}
@@ -162,188 +158,157 @@ func (cs *completerServiceClient) resultFromValue(fid flowID, value interface{})
 	return &flowModels.ModelCompletionResult{Successful: !isErr, Datum: datum}
 }
 
-func (cs *completerServiceClient) completedValue(fid flowID, value interface{}, loc *codeLoc) stageID {
+func (cs *completerServiceClient) completedValue(flowID string, value interface{}, loc *codeLoc) string {
 	req := &flowModels.ModelAddCompletedValueStageRequest{
 		CodeLocation: loc.String(),
-		FlowID:       string(fid),
-		Value:        cs.resultFromValue(fid, value),
+		FlowID:       flowID,
+		Value:        cs.resultFromValue(flowID, value),
 	}
-	p := flowSvc.NewAddValueStageParams().WithFlowID(string(fid)).WithBody(req)
+	p := flowSvc.NewAddValueStageParams().WithFlowID(flowID).WithBody(req)
 
 	ok, err := cs.sc.FlowService.AddValueStage(p)
 	if err != nil {
 		log.Fatalf("Failed to add value stage: %v", err)
 	}
-	return stageID(ok.Payload.StageID)
+	return ok.Payload.StageID
 }
 
-func (cs *completerServiceClient) supply(fid flowID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_supply, fn, loc, []string{})
+func (cs *completerServiceClient) supply(flowID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
 }
 
-func (cs *completerServiceClient) addStageWithClosure(fid flowID, op CompletionOperation, fn interface{}, loc *codeLoc, deps []string) stageID {
-	b := cs.bsClient.WriteBlob(string(fid), JSONMediaHeader, encodeContinuationRef(fn))
-	blobDatum := &BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
-	return cs.addStage(fid, op, blobDatum, loc, deps)
+func (cs *completerServiceClient) addStageWithClosure(flowID string, op string, fn interface{}, loc *codeLoc, deps []string) string {
+	// b := cs.bsClient.WriteBlob(flowID, JSONMediaHeader, encodeContinuationRef(fn))
+	panic("Not implemented")
 }
 
-func (cs *completerServiceClient) addStage(fid flowID, op CompletionOperation, closure *BlobDatum, loc *codeLoc, deps []string) stageID {
-	msg := &AddStageRequest{
-		Closure:      closure,
-		CodeLocation: loc.String(),
-		Deps:         deps,
-		FlowId:       string(fid),
-		Operation:    op,
+func (cs *completerServiceClient) thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenApply, fn, loc, stageList(stageID))
+}
+
+func (cs *completerServiceClient) thenCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenCompose, fn, loc, stageList(stageID))
+}
+
+func (cs *completerServiceClient) whenComplete(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_whenComplete, fn, loc, stageList(stageID))
+}
+
+func (cs *completerServiceClient) thenAccept(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenAccept, fn, loc, stageList(stageID))
+}
+
+func (cs *completerServiceClient) thenRun(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenRun, fn, loc, stageList(stageID))
+}
+
+func (cs *completerServiceClient) acceptEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_acceptEither, fn, loc, stageList(stageID, alt))
+}
+
+func (cs *completerServiceClient) applyToEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_applyToEither, fn, loc, stageList(stageID, alt))
+}
+
+func (cs *completerServiceClient) thenAcceptBoth(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenAcceptBoth, fn, loc, stageList(stageID, alt))
+}
+
+func (cs *completerServiceClient) thenCombine(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_thenCombine, fn, loc, stageList(stageID, alt))
+}
+
+func joinedCids(stageIDs []string) string {
+	var stageIDStrs []string
+	for _, stageID := range stageIDs {
+		stageIDStrs = append(stageIDStrs, stageID)
 	}
-	req := cs.newHTTPReq(fmt.Sprintf("/flows/%s/stage", fid), msg)
-
-	res := &AddStageResponse{}
-	cs.makeRequest(req, res)
-	return stageID(res.StageId)
+	return strings.Join(stageIDStrs, ",")
 }
 
-func (cs *completerServiceClient) thenApply(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_thenApply, fn, loc, stageList(sid))
+func (cs *completerServiceClient) allOf(flowID string, stages []string, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStage(flowID, CompletionOperation_allOf, nil, loc, stageList(stageIDs...))
 }
 
-func (cs *completerServiceClient) thenCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_thenCompose, fn, loc, stageList(sid))
+func (cs *completerServiceClient) anyOf(flowID string, stages []string, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStage(flowID, CompletionOperation_anyOf, nil, loc, stageList(stageIDs...))
 }
 
-func (cs *completerServiceClient) whenComplete(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_whenComplete, fn, loc, stageList(sid))
+func (cs *completerServiceClient) handle(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_handle, fn, loc, stageList(stageID))
 }
 
-func (cs *completerServiceClient) thenAccept(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_thenAccept, fn, loc, stageList(sid))
+func (cs *completerServiceClient) exceptionally(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_exceptionally, fn, loc, stageList(stageID))
 }
 
-func (cs *completerServiceClient) thenRun(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_thenRun, fn, loc, stageList(sid))
+func (cs *completerServiceClient) exceptionallyCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
+	panic("Not implemented")
+	//	return cs.addStageWithClosure(flowID, CompletionOperation_exceptionallyCompose, fn, loc, stageList(stageID))
 }
 
-func (cs *completerServiceClient) acceptEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_acceptEither, fn, loc, stageList(sid, alt))
+func (cs *completerServiceClient) complete(flowID string, stageID string, value interface{}, loc *codeLoc) bool {
+	panic("Not implemented")
 }
 
-func (cs *completerServiceClient) applyToEither(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_applyToEither, fn, loc, stageList(sid, alt))
-}
-
-func (cs *completerServiceClient) thenAcceptBoth(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_thenAcceptBoth, fn, loc, stageList(sid, alt))
-}
-
-func (cs *completerServiceClient) thenCombine(fid flowID, sid stageID, alt stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_thenCombine, fn, loc, stageList(sid, alt))
-}
-
-func joinedCids(sids []stageID) string {
-	var sidStrs []string
-	for _, sid := range sids {
-		sidStrs = append(sidStrs, string(sid))
-	}
-	return strings.Join(sidStrs, ",")
-}
-
-func (cs *completerServiceClient) allOf(fid flowID, sids []stageID, loc *codeLoc) stageID {
-	return cs.addStage(fid, CompletionOperation_allOf, nil, loc, stageList(sids...))
-}
-
-func (cs *completerServiceClient) anyOf(fid flowID, sids []stageID, loc *codeLoc) stageID {
-	return cs.addStage(fid, CompletionOperation_anyOf, nil, loc, stageList(sids...))
-}
-
-func (cs *completerServiceClient) handle(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_handle, fn, loc, stageList(sid))
-}
-
-func (cs *completerServiceClient) exceptionally(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_exceptionally, fn, loc, stageList(sid))
-}
-
-func (cs *completerServiceClient) exceptionallyCompose(fid flowID, sid stageID, fn interface{}, loc *codeLoc) stageID {
-	return cs.addStageWithClosure(fid, CompletionOperation_exceptionallyCompose, fn, loc, stageList(sid))
-}
-
-func (cs *completerServiceClient) completionResultForValue(fid flowID, value interface{}) *CompletionResult {
-	datum := new(Datum)
-	switch v := value.(type) {
-	case *flowFuture:
-		datum.Val = &Datum_StageRef{&StageRefDatum{StageId: string(v.stageID)}}
-
-	default:
-		if value == nil {
-			datum = &Datum{&Datum_Empty{&EmptyDatum{}}}
-		} else {
-			b := cs.bsClient.WriteBlob(string(fid), GobMediaHeader, encodeGob(value))
-			datum.Val = &Datum_Blob{&BlobDatum{BlobId: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}}
-		}
-	}
-
-	_, isErr := value.(error)
-	return &CompletionResult{Successful: !isErr, Datum: datum}
-}
-
-func (cs *completerServiceClient) complete(fid flowID, sid stageID, value interface{}, loc *codeLoc) bool {
-
-	res := &CompleteStageExternallyResponse{}
-	msg := &CompleteStageExternallyRequest{
-		CodeLocation: loc.String(),
-		FlowId:       string(fid),
-		StageId:      string(sid),
-		Value:        cs.completionResultForValue(fid, value),
-	}
-
-	path := fmt.Sprintf("/flows/%s/stages/%s/complete", string(fid), string(sid))
-	req := cs.newHTTPReq(path, msg)
-	cs.makeRequest(req, res)
-	return res.Successful
-}
-
-func (cs *completerServiceClient) invokeFunction(fid flowID, functionID string, req *HTTPRequest, loc *codeLoc) stageID {
+func (cs *completerServiceClient) invokeFunction(flowID string, functionID string, req *HTTPRequest, loc *codeLoc) string {
 	// TODO
 	panic("Not implemented!")
 }
 
-func (cs *completerServiceClient) delay(fid flowID, duration time.Duration, loc *codeLoc) stageID {
-	timeMs := int64(duration / time.Millisecond)
-	res := &AddStageResponse{}
-	req := cs.newHTTPReq("/flows", &AddDelayStageRequest{CodeLocation: loc.String(), DelayMs: timeMs, FlowId: string(fid)})
-	cs.makeRequest(req, res)
-	return stageID(res.StageId)
+func (cs *completerServiceClient) delay(flowID string, duration time.Duration, loc *codeLoc) string {
+	// timeMs := int64(duration / time.Millisecond)
+	panic("Not implemented")
+	//
 }
 
-func (cs *completerServiceClient) getAsync(fid flowID, sid stageID, rType reflect.Type) (chan interface{}, chan error) {
+func (cs *completerServiceClient) getAsync(flowID string, stageID string, rType reflect.Type) (chan interface{}, chan error) {
 	valueCh := make(chan interface{}, 1)
 	errorCh := make(chan error, 1)
-	go cs.get(fid, sid, rType, valueCh, errorCh)
+	go cs.get(flowID, stageID, rType, valueCh, errorCh)
 	return valueCh, errorCh
 }
 
-func (cs *completerServiceClient) get(fid flowID, sid stageID, rType reflect.Type, valueCh chan interface{}, errorCh chan error) {
-	debug(fmt.Sprintf("Getting result for stage %s and flow %s", sid, fid))
-	req := cs.protocol.getStageReq(fid, sid)
-	res, err := hc.Do(req)
-	if err != nil {
-		panic("Failed request: " + err.Error())
-	}
-	defer res.Body.Close()
+func (cs *completerServiceClient) get(flowID string, stageID string, rType reflect.Type, valueCh chan interface{}, errorCh chan error) {
+	panic("Not implemented")
 
-	debug(fmt.Sprintf("Getting stage value of type %s", res.Header.Get(DatumTypeHeader)))
-	hdr := textproto.MIMEHeader(res.Header)
-	val := decodeDatum(rType, res.Body, &hdr)
-	if err, isErr := val.(error); isErr {
-		debug("Getting failed result")
-		errorCh <- err
-	} else {
-		debug("Getting successful result")
-		valueCh <- val
-	}
+	/*
+		debug(fmt.Sprintf("Getting result for stage %s and flow %s", stageID, flowID))
+		req := cs.protocol.getStageReq(flowID, stageID)
+		res, err := hc.Do(req)
+		if err != nil {
+			panic("Failed request: " + err.Error())
+		}
+		defer res.Body.Close()
+
+		debug(fmt.Sprintf("Getting stage value of type %s", res.Header.Get(DatumTypeHeader)))
+		hdr := textproto.MIMEHeader(res.Header)
+		val := decodeDatum(rType, res.Body, &hdr)
+		if err, isErr := val.(error); isErr {
+			debug("Getting failed result")
+			errorCh <- err
+		} else {
+			debug("Getting successful result")
+			valueCh <- val
+		}
+	*/
 }
 
-func (cs *completerServiceClient) commit(fid flowID) {
-	cs.safeReq(cs.protocol.commit(fid))
+func (cs *completerServiceClient) commit(flowID string) {
+	panic("Not implemented")
 }
 
 func (cs *completerServiceClient) safeReq(req *http.Request) *http.Response {

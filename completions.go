@@ -61,7 +61,7 @@ func WithFlow(fn func()) {
 
 func initFlow(codec codec, shouldCreate bool) {
 	completer := newCompleterClient()
-	var flowID flowID
+	var flowID string
 	if shouldCreate {
 		flowID = completer.createFlow(getFunctionID(codec))
 		debug(fmt.Sprintf("Created new flow %v", flowID))
@@ -132,13 +132,13 @@ type HTTPResponse struct {
 
 type flow struct {
 	completer completerClient
-	flowID    flowID
+	flowID    string
 	codec     codec
 }
 
 type flowFuture struct {
 	*flow
-	stageID    stageID
+	stageID    string
 	returnType reflect.Type
 }
 
@@ -173,8 +173,8 @@ func returnTypeForFunc(fn interface{}) reflect.Type {
 	return nil
 }
 
-func (cf *flow) continuationFuture(sid stageID, fn interface{}) *flowFuture {
-	return &flowFuture{flow: cf, stageID: sid, returnType: returnTypeForFunc(fn)}
+func (cf *flow) continuationFuture(stageID string, fn interface{}) *flowFuture {
+	return &flowFuture{flow: cf, stageID: stageID, returnType: returnTypeForFunc(fn)}
 }
 
 func (cf *flow) Supply(action interface{}) FlowFuture {
@@ -206,8 +206,8 @@ func (cf *flow) EmptyFuture() FlowFuture {
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
-func futureCids(futures ...FlowFuture) []stageID {
-	var sids []stageID
+func futureCids(futures ...FlowFuture) []string {
+	var sids []string
 	for _, f := range futures {
 		ff := f.(*flowFuture)
 		sids = append(sids, ff.stageID)

@@ -55,13 +55,12 @@ func newCompleterProtocol(baseURL string) *completerProtocol {
 	return &completerProtocol{baseURL: baseURL}
 }
 
-func (p *completerProtocol) parseFlowID(res *http.Response) flowID {
-
-	return flowID(res.Header.Get(FlowIDHeader))
+func (p *completerProtocol) parseFlowID(res *http.Response) string {
+	return res.Header.Get(FlowIDHeader)
 }
 
-func (p *completerProtocol) parseStageID(res *http.Response) stageID {
-	return stageID(res.Header.Get(StageIDHeader))
+func (p *completerProtocol) parseStageID(res *http.Response) string {
+	return res.Header.Get(StageIDHeader)
 }
 
 func (p *completerProtocol) newHTTPReq(path string, msg interface{}) *http.Request {
@@ -76,54 +75,6 @@ func (p *completerProtocol) newHTTPReq(path string, msg interface{}) *http.Reque
 		panic("Failed to create request object")
 	}
 	return req
-}
-
-func (p *completerProtocol) createFlowReq(functionID string) *http.Request {
-	url := fmt.Sprintf("%s/flows", p.baseURL)
-	msg := CreateGraphRequest{FunctionId: functionID}
-	body := new(bytes.Buffer)
-	if err := json.NewEncoder(body).Encode(msg); err != nil {
-		panic("Failed to encode request object")
-	}
-
-	req, err := http.NewRequest("POST", url, body)
-	if err != nil {
-		panic("Failed to create request object")
-	}
-	return req
-}
-
-func (p *completerProtocol) completedValueReq(fid flowID, value interface{}) *http.Request {
-	URL := p.rootStageURL("completedValue", fid)
-	var req *http.Request
-	if err, isErr := value.(error); isErr {
-		// errors are encoded as string gobs
-		req = createRequest("POST", URL, encodeGob(err.Error()))
-		req.Header.Set(ResultStatusHeader, FailureHeaderValue)
-	} else {
-		req = createRequest("POST", URL, encodeGob(value))
-		req.Header.Set(ResultStatusHeader, SuccessHeaderValue)
-	}
-	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
-	req.Header.Set(ContentTypeHeader, GobMediaHeader)
-	return req
-}
-
-func (p *completerProtocol) rootStageURL(op string, fid flowID) string {
-	return fmt.Sprintf("%s/flows/%s/%s", p.baseURL, fid, op)
-}
-
-func (p *completerProtocol) chainedStageURL(op string, fid flowID, sid stageID) string {
-	return fmt.Sprintf("%s/flows/%s/stage/%s/%s", p.baseURL, fid, sid, op)
-}
-
-func (p *completerProtocol) chained(op string, fid flowID, sid stageID, fn interface{}, loc *codeLoc) *http.Request {
-	return p.completionWithBody(p.chainedStageURL(op, fid, sid), fn, loc)
-}
-
-func (p *completerProtocol) chainedWithOther(op string, fid flowID, sid stageID, altCid stageID, fn interface{}, loc *codeLoc) *http.Request {
-	URL := fmt.Sprintf("%s/flows/%s/stage/%s/%s?other=%s", p.baseURL, fid, sid, op, string(altCid))
-	return p.completionWithBody(URL, fn, loc)
 }
 
 func (p *completerProtocol) completionWithBody(URL string, fn interface{}, loc *codeLoc) *http.Request {
@@ -157,14 +108,6 @@ func (p *completerProtocol) completion(URL string, loc *codeLoc, r io.Reader) *h
 	req.Header.Set(DatumTypeHeader, BlobDatumHeader)
 	req.Header.Set(CodeLocationHeader, loc.String())
 	return req
-}
-
-func (p *completerProtocol) getStageReq(fid flowID, sid stageID) *http.Request {
-	return createRequest("GET", fmt.Sprintf("%s/flows/%s/stage/%s/await", p.baseURL, fid, sid), nil)
-}
-
-func (p *completerProtocol) commit(fid flowID) *http.Request {
-	return createRequest("POST", fmt.Sprintf("%s/flows/%s/commit", p.baseURL, fid), nil)
 }
 
 // panics if the request can't be created
