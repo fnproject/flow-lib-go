@@ -23,7 +23,7 @@ type ModelBlobDatum struct {
 	ContentType string `json:"content_type,omitempty"`
 
 	// length
-	Length int64 `json:"length,omitempty"`
+	Length int64 `json:"length,omitempty,string"`
 }
 
 // Validate validates this model blob datum
