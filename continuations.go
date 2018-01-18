@@ -7,10 +7,8 @@ import (
 	"reflect"
 	"runtime"
 	dbg "runtime/debug"
-	"sync"
 )
 
-var actionsMtx = &sync.Mutex{} // guards access to cActions
 var actions = make(map[string]interface{})
 
 func invoke(continuation interface{}, args ...interface{}) (result interface{}, err error) {
@@ -51,7 +49,7 @@ func valToError(v reflect.Value) error {
 func invokeContinuation(continuation interface{}, args ...interface{}) []reflect.Value {
 	fn := reflect.ValueOf(continuation)
 	var rargs []reflect.Value
-	argTypes := continuationArgTypes(continuation)
+	argTypes := actionArgs(continuation)
 
 	if reflect.TypeOf(continuation).NumIn() == 0 {
 		debug("Ignoring arguments for empty continuation function")
@@ -79,14 +77,10 @@ func RegisterAction(action interface{}) {
 	if reflect.TypeOf(action).Kind() != reflect.Func {
 		panic("Action must be a function!")
 	}
-	actionsMtx.Lock()
-	defer actionsMtx.Unlock()
 	actions[getActionID(action)] = action
 }
 
 func invokeFromRegistry(actionID string, args ...interface{}) (interface{}, error) {
-	actionsMtx.Lock()
-	defer actionsMtx.Unlock()
 	if e, ok := actions[actionID]; !ok {
 		panic("Continuation not registered")
 	} else {
@@ -99,8 +93,6 @@ func decodeContinuation(reader io.Reader) interface{} {
 	if err := json.NewDecoder(reader).Decode(&ref); err != nil {
 		panic("Failed to decode continuation")
 	}
-	actionsMtx.Lock()
-	defer actionsMtx.Unlock()
 	action, valid := actions[ref.ID]
 	if !valid {
 		panic("Continuation not registered")

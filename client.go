@@ -34,7 +34,6 @@ func newCompleterClient() completerClient {
 
 	return &completerServiceClient{
 		url:      completerURL,
-		protocol: newCompleterProtocol(completerURL),
 		sc:       sc,
 		bsClient: blobstore.GetBlobStore(),
 	}
@@ -76,7 +75,6 @@ type completerClient interface {
 
 type completerServiceClient struct {
 	url      string
-	protocol *completerProtocol
 	hc       *http.Client
 	sc       *api.Flow
 	bsClient blobstore.BlobStoreClient
@@ -196,7 +194,6 @@ func (cs *completerServiceClient) complete(flowID string, stageID string, value 
 }
 
 func (cs *completerServiceClient) invokeFunction(flowID string, functionID string, req *HTTPRequest, loc *codeLoc) string {
-	// TODO
 	panic("Not implemented!")
 }
 
