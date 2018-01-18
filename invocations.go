@@ -1,8 +1,6 @@
 package flow
 
 import (
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -64,7 +62,7 @@ func (in *InvokeStageRequest) invoke() {
 func (in *InvokeStageRequest) action() (actionFunction interface{}) {
 	blobstore.GetBlobStore().ReadBlob(in.FlowID, in.Closure.BlobID, JSONMediaHeader,
 		func(body io.ReadCloser) {
-			var ref continuationRef
+			var ref actionRef
 			if err := json.NewDecoder(body).Decode(&ref); err != nil {
 				panic("Failed to decode continuation")
 			}
@@ -78,19 +76,17 @@ func (in *InvokeStageRequest) action() (actionFunction interface{}) {
 	return
 }
 
-func writeResult(flowID string, result interface{}, err error) {
-	var val interface{}
-	if err == nil {
-		debug(fmt.Sprintf("Writing successful result %v", result))
-		val = result
-	} else {
-		debug(fmt.Sprintf("Writing error result %v", err))
-		val = err
+func handleInvocation(codec codec) {
+	debug("Handling continuation")
+	var in InvokeStageRequest
+	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+		panic(fmt.Sprintf("Failed to decode stage invocation request: %v", err))
 	}
-	resp := &InvokeStageResponse{Result: valueToModel(val, flowID, blobstore.GetBlobStore())}
-	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
-		panic("Failed to encode completion result")
+	if len(in.Args) < 1 {
+		panic("Invalid multipart continuation, need at least one argument")
 	}
+
+	in.invoke()
 }
 
 func invokeFunc(continuation interface{}, args []interface{}) (result interface{}, err error) {
@@ -125,62 +121,40 @@ func invokeFunc(continuation interface{}, args []interface{}) (result interface{
 	}
 }
 
-type continuationRef struct {
-	ID string `json:"action-id"`
+func writeResult(flowID string, result interface{}, err error) {
+	var val interface{}
+	if err == nil {
+		debug(fmt.Sprintf("Writing successful result %v", result))
+		val = result
+	} else {
+		debug(fmt.Sprintf("Writing error result %v", err))
+		val = err
+	}
+	resp := &InvokeStageResponse{Result: valueToModel(val, flowID, blobstore.GetBlobStore())}
+	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
+		panic("Failed to encode completion result")
+	}
 }
 
-func (cr *continuationRef) getKey() string {
+// internal encoding of a function pointer since go doesn't allow pointers to be serialized
+type actionRef struct {
+	ID string `json:"action-key"`
+}
+
+func (cr *actionRef) getKey() string {
 	return cr.ID
 }
 
-func newContinuationRef(action interface{}) *continuationRef {
-	return &continuationRef{ID: getActionID(action)}
+func newActionRef(actionFunc interface{}) *actionRef {
+	return &actionRef{ID: getActionKey(actionFunc)}
 }
 
-func handleInvocation(codec codec) {
-	debug("Handling continuation")
-	var in InvokeStageRequest
-	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
-		panic(fmt.Sprintf("Failed to decode stage invocation request: %v", err))
-	}
-	if len(in.Args) < 1 {
-		panic("Invalid multipart continuation, need at least one argument")
-	}
-
-	in.invoke()
-}
-
-func valueToModel(value interface{}, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelCompletionResult {
-	datum := new(models.ModelDatum)
-	switch v := value.(type) {
-	case *flowFuture:
-		datum.StageRef = &models.ModelStageRefDatum{StageID: v.stageID}
-
-	default:
-		if value == nil {
-			datum.Empty = new(models.ModelEmptyDatum)
-		} else {
-			b := blobStore.WriteBlob(flowID, GobMediaHeader, encodeGob(value))
-			datum.Blob = &models.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
-		}
-	}
-
-	_, isErr := value.(error)
-	return &models.ModelCompletionResult{Successful: !isErr, Datum: datum}
-}
-
-func closureToModel(closure interface{}, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelBlobDatum {
-	b := blobStore.WriteBlob(flowID, JSONMediaHeader, encodeContinuationRef(closure))
-	debug(fmt.Sprintf("Published blob %v", b.BlobId))
-	return &models.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
-}
-
-func actionArgs(continuation interface{}) (argTypes []reflect.Type) {
-	if reflect.TypeOf(continuation).Kind() != reflect.Func {
+func actionArgs(actionFunc interface{}) (argTypes []reflect.Type) {
+	if reflect.TypeOf(actionFunc).Kind() != reflect.Func {
 		panic("Continuation must be a function!")
 	}
 
-	fn := reflect.TypeOf(continuation)
+	fn := reflect.TypeOf(actionFunc)
 	argC := fn.NumIn() // inbound params
 	if argC > MaxContinuationArgCount {
 		panic(fmt.Sprintf("Continuations may take a maximum of %d parameters", MaxContinuationArgCount))
@@ -192,20 +166,13 @@ func actionArgs(continuation interface{}) (argTypes []reflect.Type) {
 	return
 }
 
-func encodeContinuationRef(fn interface{}) *bytes.Buffer {
-	cr := newContinuationRef(fn)
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(cr); err != nil {
-		panic("Failed to encode continuation reference: " + err.Error())
-	}
-	return &buf
+func valToInterface(v reflect.Value) interface{} {
+	return v.Interface()
 }
 
-func encodeGob(value interface{}) *bytes.Buffer {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(value); err != nil {
-		panic("Failed to encode gob: " + err.Error())
+func valToError(v reflect.Value) error {
+	if v.IsNil() {
+		return nil
 	}
-	return &buf
+	return valToInterface(v).(error)
 }

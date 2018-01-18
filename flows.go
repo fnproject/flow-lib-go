@@ -33,6 +33,21 @@ func debug(msg string) {
 	}
 }
 
+var actions = make(map[string]interface{})
+
+func getActionKey(actionFunc interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(actionFunc).Pointer()).Name()
+}
+
+// registers a go function so it can be used as an action
+// in a flow stage
+func RegisterAction(actionFunc interface{}) {
+	if reflect.TypeOf(actionFunc).Kind() != reflect.Func {
+		panic("Action must be a function!")
+	}
+	actions[getActionKey(actionFunc)] = actionFunc
+}
+
 var cfMtx = &sync.Mutex{}
 var cf *flow
 
@@ -60,10 +75,10 @@ func WithFlow(fn func()) {
 }
 
 func initFlow(codec codec, shouldCreate bool) {
-	completer := newCompleterClient()
+	client := newFlowClient()
 	var flowID string
 	if shouldCreate {
-		flowID = completer.createFlow(getFunctionID(codec))
+		flowID = client.createFlow(getFunctionID(codec))
 		debug(fmt.Sprintf("Created new flow %v", flowID))
 	} else {
 		flowID = codec.getFlowID()
@@ -72,9 +87,9 @@ func initFlow(codec codec, shouldCreate bool) {
 	cfMtx.Lock()
 	defer cfMtx.Unlock()
 	cf = &flow{
-		completer: completer,
-		flowID:    flowID,
-		codec:     codec,
+		client: client,
+		flowID: flowID,
+		codec:  codec,
 	}
 }
 
@@ -131,9 +146,9 @@ type HTTPResponse struct {
 }
 
 type flow struct {
-	completer completerClient
-	flowID    string
-	codec     codec
+	client flowClient
+	flowID string
+	codec  codec
 }
 
 type flowFuture struct {
@@ -162,7 +177,7 @@ func newCodeLoc() *codeLoc {
 }
 
 func (cf *flow) commit() {
-	cf.completer.commit(cf.flowID)
+	cf.client.commit(cf.flowID)
 }
 
 func returnTypeForFunc(fn interface{}) reflect.Type {
@@ -178,22 +193,22 @@ func (cf *flow) continuationFuture(stageID string, fn interface{}) *flowFuture {
 }
 
 func (cf *flow) Supply(action interface{}) FlowFuture {
-	sid := cf.completer.supply(cf.flowID, action, newCodeLoc())
+	sid := cf.client.supply(cf.flowID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (cf *flow) Delay(duration time.Duration) FlowFuture {
-	sid := cf.completer.delay(cf.flowID, duration, newCodeLoc())
+	sid := cf.client.delay(cf.flowID, duration, newCodeLoc())
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
 func (cf *flow) CompletedValue(value interface{}) FlowFuture {
-	sid := cf.completer.completedValue(cf.flowID, value, newCodeLoc())
+	sid := cf.client.completedValue(cf.flowID, value, newCodeLoc())
 	return &flowFuture{flow: cf, stageID: sid, returnType: reflect.TypeOf(value)}
 }
 
 func (cf *flow) InvokeFunction(functionID string, req *HTTPRequest) FlowFuture {
-	sid := cf.completer.invokeFunction(cf.flowID, functionID, req, newCodeLoc())
+	sid := cf.client.invokeFunction(cf.flowID, functionID, req, newCodeLoc())
 	return &flowFuture{
 		flow:       cf,
 		stageID:    sid,
@@ -202,7 +217,7 @@ func (cf *flow) InvokeFunction(functionID string, req *HTTPRequest) FlowFuture {
 }
 
 func (cf *flow) EmptyFuture() FlowFuture {
-	sid := cf.completer.emptyFuture(cf.flowID, newCodeLoc())
+	sid := cf.client.emptyFuture(cf.flowID, newCodeLoc())
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
@@ -216,85 +231,85 @@ func futureCids(futures ...FlowFuture) []string {
 }
 
 func (cf *flow) AllOf(futures ...FlowFuture) FlowFuture {
-	sid := cf.completer.allOf(cf.flowID, futureCids(futures...), newCodeLoc())
+	sid := cf.client.allOf(cf.flowID, futureCids(futures...), newCodeLoc())
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
 func (cf *flow) AnyOf(futures ...FlowFuture) FlowFuture {
-	sid := cf.completer.anyOf(cf.flowID, futureCids(futures...), newCodeLoc())
+	sid := cf.client.anyOf(cf.flowID, futureCids(futures...), newCodeLoc())
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
 func (f *flowFuture) Get() (chan interface{}, chan error) {
-	return f.completer.getAsync(f.flowID, f.stageID, f.returnType)
+	return f.client.getAsync(f.flowID, f.stageID, f.returnType)
 }
 
 func (f *flowFuture) GetType(t reflect.Type) (chan interface{}, chan error) {
-	return f.completer.getAsync(f.flowID, f.stageID, t)
+	return f.client.getAsync(f.flowID, f.stageID, t)
 }
 
 func (f *flowFuture) ThenApply(action interface{}) FlowFuture {
-	sid := f.completer.thenApply(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.thenApply(f.flowID, f.stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) ThenCompose(action interface{}) FlowFuture {
-	sid := f.completer.thenCompose(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.thenCompose(f.flowID, f.stageID, action, newCodeLoc())
 	// no type information available for inner future
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
 func (f *flowFuture) ThenCombine(other FlowFuture, action interface{}) FlowFuture {
-	sid := f.completer.thenCombine(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	sid := f.client.thenCombine(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) WhenComplete(action interface{}) FlowFuture {
-	sid := f.completer.whenComplete(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.whenComplete(f.flowID, f.stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) ThenAccept(action interface{}) FlowFuture {
-	sid := f.completer.thenAccept(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.thenAccept(f.flowID, f.stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) AcceptEither(other FlowFuture, action interface{}) FlowFuture {
-	sid := f.completer.acceptEither(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	sid := f.client.acceptEither(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) ApplyToEither(other FlowFuture, action interface{}) FlowFuture {
-	sid := f.completer.applyToEither(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	sid := f.client.applyToEither(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) ThenAcceptBoth(other FlowFuture, action interface{}) FlowFuture {
-	sid := f.completer.thenAcceptBoth(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
+	sid := f.client.thenAcceptBoth(f.flowID, f.stageID, other.(*flowFuture).stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) ThenRun(action interface{}) FlowFuture {
-	sid := f.completer.thenRun(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.thenRun(f.flowID, f.stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) Handle(action interface{}) FlowFuture {
-	sid := f.completer.handle(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.handle(f.flowID, f.stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) Exceptionally(action interface{}) FlowFuture {
-	sid := f.completer.exceptionally(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.exceptionally(f.flowID, f.stageID, action, newCodeLoc())
 	return cf.continuationFuture(sid, action)
 }
 
 func (f *flowFuture) ExceptionallyCompose(action interface{}) FlowFuture {
-	sid := f.completer.exceptionallyCompose(f.flowID, f.stageID, action, newCodeLoc())
+	sid := f.client.exceptionallyCompose(f.flowID, f.stageID, action, newCodeLoc())
 	// no type information available for inner future
 	return &flowFuture{flow: cf, stageID: sid}
 }
 
 func (f *flowFuture) Complete(value interface{}) bool {
-	return f.completer.complete(f.flowID, f.stageID, value, newCodeLoc())
+	return f.client.complete(f.flowID, f.stageID, value, newCodeLoc())
 }
