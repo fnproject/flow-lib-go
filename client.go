@@ -51,22 +51,22 @@ type flowClient interface {
 	emptyFuture(flowID string, loc *codeLoc) string
 	completedValue(flowID string, value interface{}, loc *codeLoc) string
 	delay(flowID string, duration time.Duration, loc *codeLoc) string
-	supply(flowID string, fn interface{}, loc *codeLoc) string
-	thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	thenCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	whenComplete(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	thenAccept(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	thenRun(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	acceptEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
-	applyToEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
-	thenAcceptBoth(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
+	supply(flowID string, actionFunc interface{}, loc *codeLoc) string
+	thenApply(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	thenCompose(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	whenComplete(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	thenAccept(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	thenRun(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	acceptEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
+	applyToEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
+	thenAcceptBoth(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
 	invokeFunction(flowID string, functionID string, req *HTTPRequest, loc *codeLoc) string
 	allOf(flowID string, stages []string, loc *codeLoc) string
 	anyOf(flowID string, stages []string, loc *codeLoc) string
-	handle(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	exceptionally(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	exceptionallyCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string
-	thenCombine(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string
+	handle(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	exceptionally(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	exceptionallyCompose(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
+	thenCombine(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
 	complete(flowID string, stageID string, val interface{}, loc *codeLoc) bool
 }
 
@@ -100,13 +100,13 @@ func (c *remoteFlowClient) completedValue(flowID string, value interface{}, loc 
 	return ok.Payload.StageID
 }
 
-func (c *remoteFlowClient) supply(flowID string, fn interface{}, loc *codeLoc) string {
+func (c *remoteFlowClient) supply(flowID string, actionFunc interface{}, loc *codeLoc) string {
 	panic("Not implemented")
 }
 
-func (c *remoteFlowClient) addStageWithClosure(flowID string, op models.ModelCompletionOperation, fn interface{}, loc *codeLoc, deps ...string) string {
+func (c *remoteFlowClient) addStageWithClosure(flowID string, op models.ModelCompletionOperation, actionFunc interface{}, loc *codeLoc, deps ...string) string {
 	req := &models.ModelAddStageRequest{
-		Closure:      closureToModel(fn, flowID, c.blobStore),
+		Closure:      actionToModel(actionFunc, flowID, c.blobStore),
 		CodeLocation: loc.String(),
 		Deps:         deps,
 		FlowID:       flowID,
@@ -121,40 +121,40 @@ func (c *remoteFlowClient) addStageWithClosure(flowID string, op models.ModelCom
 	return ok.Payload.StageID
 }
 
-func (c *remoteFlowClient) thenApply(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenApply, fn, loc, stageID)
+func (c *remoteFlowClient) thenApply(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenApply, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) thenCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenCompose, fn, loc, stageID)
+func (c *remoteFlowClient) thenCompose(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenCompose, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) whenComplete(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationWhenComplete, fn, loc, stageID)
+func (c *remoteFlowClient) whenComplete(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationWhenComplete, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) thenAccept(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenAccept, fn, loc, stageID)
+func (c *remoteFlowClient) thenAccept(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenAccept, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) thenRun(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenRun, fn, loc, stageID)
+func (c *remoteFlowClient) thenRun(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenRun, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) acceptEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationAcceptEither, fn, loc, stageID, altStageID)
+func (c *remoteFlowClient) acceptEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationAcceptEither, actionFunc, loc, stageID, altStageID)
 }
 
-func (c *remoteFlowClient) applyToEither(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationApplyToEither, fn, loc, stageID, altStageID)
+func (c *remoteFlowClient) applyToEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationApplyToEither, actionFunc, loc, stageID, altStageID)
 }
 
-func (c *remoteFlowClient) thenAcceptBoth(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenAcceptBoth, fn, loc, stageID, altStageID)
+func (c *remoteFlowClient) thenAcceptBoth(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenAcceptBoth, actionFunc, loc, stageID, altStageID)
 }
 
-func (c *remoteFlowClient) thenCombine(flowID string, stageID string, altStageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenCombine, fn, loc, stageID, altStageID)
+func (c *remoteFlowClient) thenCombine(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationThenCombine, actionFunc, loc, stageID, altStageID)
 }
 
 func (c *remoteFlowClient) allOf(flowID string, stages []string, loc *codeLoc) string {
@@ -167,16 +167,16 @@ func (c *remoteFlowClient) anyOf(flowID string, stages []string, loc *codeLoc) s
 	//	return cs.addStage(flowID, CompletionOperation_anyOf, nil, loc, stageList(stageIDs...))
 }
 
-func (c *remoteFlowClient) handle(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationHandle, fn, loc, stageID)
+func (c *remoteFlowClient) handle(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationHandle, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) exceptionally(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationExceptionally, fn, loc, stageID)
+func (c *remoteFlowClient) exceptionally(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationExceptionally, actionFunc, loc, stageID)
 }
 
-func (c *remoteFlowClient) exceptionallyCompose(flowID string, stageID string, fn interface{}, loc *codeLoc) string {
-	return c.addStageWithClosure(flowID, models.ModelCompletionOperationExceptionallyCompose, fn, loc, stageID)
+func (c *remoteFlowClient) exceptionallyCompose(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationExceptionallyCompose, actionFunc, loc, stageID)
 }
 
 func (c *remoteFlowClient) complete(flowID string, stageID string, value interface{}, loc *codeLoc) bool {

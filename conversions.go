@@ -10,8 +10,8 @@ import (
 	"github.com/fnproject/flow-lib-go/models"
 )
 
-func closureToModel(closure interface{}, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelBlobDatum {
-	b := blobStore.WriteBlob(flowID, JSONMediaHeader, encodeActionRef(closure))
+func actionToModel(actionFunc interface{}, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelBlobDatum {
+	b := blobStore.WriteBlob(flowID, JSONMediaHeader, encodeAction(actionFunc))
 	debug(fmt.Sprintf("Published blob %v", b.BlobId))
 	return &models.ModelBlobDatum{BlobID: b.BlobId, ContentType: b.ContentType, Length: b.BlobLength}
 }
@@ -35,8 +35,8 @@ func valueToModel(value interface{}, flowID string, blobStore blobstore.BlobStor
 	return &models.ModelCompletionResult{Successful: !isErr, Datum: datum}
 }
 
-func encodeActionRef(fn interface{}) *bytes.Buffer {
-	cr := newActionRef(fn)
+func encodeAction(actionFunc interface{}) *bytes.Buffer {
+	cr := newActionRef(actionFunc)
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(cr); err != nil {
 		panic("Failed to encode continuation reference: " + err.Error())
