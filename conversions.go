@@ -10,7 +10,6 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/fnproject/flow-lib-go/api"
 	"github.com/fnproject/flow-lib-go/blobstore"
 	"github.com/fnproject/flow-lib-go/models"
 )
@@ -25,7 +24,7 @@ func valueToModel(value interface{}, flowID string, blobStore blobstore.BlobStor
 	datum := new(models.ModelDatum)
 	switch v := value.(type) {
 
-	case api.FlowFuture:
+	case FlowFuture:
 		debug("Converting value to ModelStageRefDatum")
 		ff, ok := v.(*flowFuture)
 		if !ok {
@@ -116,12 +115,12 @@ func datumToValue(datum interface{}, flowID string, rType reflect.Type, blobStor
 		return result
 
 	case *models.ModelHTTPReqDatum:
-		// TODO convert to api.HTTPReq
-		return &api.HTTPRequest{}
+		// TODO convert to HTTPReq
+		return &HTTPRequest{}
 
 	case *models.ModelHTTPRespDatum:
-		// TODO convert to api.HTTPResp
-		return &api.HTTPResponse{}
+		// TODO convert to HTTPResp
+		return &HTTPResponse{}
 
 	case *models.ModelStageRefDatum:
 		return &flowFuture{flow: CurrentFlow().(*flow), stageID: d.StageID}

@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/fnproject/flow-lib-go/api"
 	"github.com/fnproject/flow-lib-go/blobstore"
 	client "github.com/fnproject/flow-lib-go/client"
 	flowSvc "github.com/fnproject/flow-lib-go/client/flow_service"
@@ -61,7 +60,7 @@ type flowClient interface {
 	acceptEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
 	applyToEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
 	thenAcceptBoth(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
-	invokeFunction(flowID string, functionID string, arg *api.HTTPRequest, loc *codeLoc) string
+	invokeFunction(flowID string, functionID string, arg *HTTPRequest, loc *codeLoc) string
 	allOf(flowID string, stages []string, loc *codeLoc) string
 	anyOf(flowID string, stages []string, loc *codeLoc) string
 	handle(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
@@ -187,8 +186,8 @@ func (c *remoteFlowClient) complete(flowID string, stageID string, value interfa
 	return ok.Payload.Successful
 }
 
-func (c *remoteFlowClient) invokeFunction(flowID string, functionID string, arg *api.HTTPRequest, loc *codeLoc) string {
-	// TODO convert between api.HTTPRequest and model version
+func (c *remoteFlowClient) invokeFunction(flowID string, functionID string, arg *HTTPRequest, loc *codeLoc) string {
+	// TODO convert between HTTPRequest and model version
 
 	req := &models.ModelAddInvokeFunctionStageRequest{
 		CodeLocation: loc.String(),
