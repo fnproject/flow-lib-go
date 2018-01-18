@@ -7,8 +7,9 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/fnproject/flow-lib-go/api"
 	"github.com/fnproject/flow-lib-go/blobstore"
-	api "github.com/fnproject/flow-lib-go/client"
+	client "github.com/fnproject/flow-lib-go/client"
 	flowSvc "github.com/fnproject/flow-lib-go/client/flow_service"
 	"github.com/fnproject/flow-lib-go/models"
 )
@@ -30,12 +31,12 @@ func newFlowClient() flowClient {
 		log.Fatal("Invalid COMPLETER_BASE_URL provided!")
 	}
 
-	cfg := api.DefaultTransportConfig().
+	cfg := client.DefaultTransportConfig().
 		WithHost(cURL.Host).
 		WithBasePath(cURL.Path).
 		WithSchemes([]string{cURL.Scheme})
 
-	sc := api.NewHTTPClientWithConfig(nil, cfg)
+	sc := client.NewHTTPClientWithConfig(nil, cfg)
 
 	return &remoteFlowClient{
 		url:       completerURL,
@@ -60,7 +61,7 @@ type flowClient interface {
 	acceptEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
 	applyToEither(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
 	thenAcceptBoth(flowID string, stageID string, altStageID string, actionFunc interface{}, loc *codeLoc) string
-	invokeFunction(flowID string, functionID string, req *HTTPRequest, loc *codeLoc) string
+	invokeFunction(flowID string, functionID string, arg *api.HTTPRequest, loc *codeLoc) string
 	allOf(flowID string, stages []string, loc *codeLoc) string
 	anyOf(flowID string, stages []string, loc *codeLoc) string
 	handle(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string
@@ -81,29 +82,6 @@ func (c *remoteFlowClient) createFlow(functionID string) string {
 	return ok.Payload.FlowID
 }
 
-func (c *remoteFlowClient) emptyFuture(flowID string, loc *codeLoc) string {
-	panic("Not implemented")
-}
-
-func (c *remoteFlowClient) completedValue(flowID string, value interface{}, loc *codeLoc) string {
-	req := &models.ModelAddCompletedValueStageRequest{
-		CodeLocation: loc.String(),
-		FlowID:       flowID,
-		Value:        valueToModel(value, flowID, c.blobStore),
-	}
-	p := flowSvc.NewAddValueStageParams().WithFlowID(flowID).WithBody(req)
-
-	ok, err := c.flows.AddValueStage(p)
-	if err != nil {
-		log.Fatalf("Failed to add value stage: %v", err)
-	}
-	return ok.Payload.StageID
-}
-
-func (c *remoteFlowClient) supply(flowID string, actionFunc interface{}, loc *codeLoc) string {
-	panic("Not implemented")
-}
-
 func (c *remoteFlowClient) addStageWithClosure(flowID string, op models.ModelCompletionOperation, actionFunc interface{}, loc *codeLoc, deps ...string) string {
 	req := &models.ModelAddStageRequest{
 		Closure:      actionToModel(actionFunc, flowID, c.blobStore),
@@ -116,9 +94,32 @@ func (c *remoteFlowClient) addStageWithClosure(flowID string, op models.ModelCom
 
 	ok, err := c.flows.AddStage(p)
 	if err != nil {
-		log.Fatalf("Failed to add value stage: %v", err)
+		log.Fatalf("Failed to add stage %v: %v", op, err)
 	}
 	return ok.Payload.StageID
+}
+
+func (c *remoteFlowClient) emptyFuture(flowID string, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationExternalCompletion, nil, loc, []string{}...)
+}
+
+func (c *remoteFlowClient) completedValue(flowID string, value interface{}, loc *codeLoc) string {
+	req := &models.ModelAddCompletedValueStageRequest{
+		CodeLocation: loc.String(),
+		FlowID:       flowID,
+		Value:        valueToModel(value, flowID, c.blobStore),
+	}
+	p := flowSvc.NewAddValueStageParams().WithFlowID(flowID).WithBody(req)
+
+	ok, err := c.flows.AddValueStage(p)
+	if err != nil {
+		log.Fatalf("Failed to add completed stage: %v", err)
+	}
+	return ok.Payload.StageID
+}
+
+func (c *remoteFlowClient) supply(flowID string, actionFunc interface{}, loc *codeLoc) string {
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationSupply, actionFunc, loc, []string{}...)
 }
 
 func (c *remoteFlowClient) thenApply(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
@@ -158,13 +159,11 @@ func (c *remoteFlowClient) thenCombine(flowID string, stageID string, altStageID
 }
 
 func (c *remoteFlowClient) allOf(flowID string, stages []string, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStage(flowID, CompletionOperation_allOf, nil, loc, stageList(stageIDs...))
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationAllOf, nil, loc, stages...)
 }
 
 func (c *remoteFlowClient) anyOf(flowID string, stages []string, loc *codeLoc) string {
-	panic("Not implemented")
-	//	return cs.addStage(flowID, CompletionOperation_anyOf, nil, loc, stageList(stageIDs...))
+	return c.addStageWithClosure(flowID, models.ModelCompletionOperationAnyOf, nil, loc, stages...)
 }
 
 func (c *remoteFlowClient) handle(flowID string, stageID string, actionFunc interface{}, loc *codeLoc) string {
@@ -180,17 +179,45 @@ func (c *remoteFlowClient) exceptionallyCompose(flowID string, stageID string, a
 }
 
 func (c *remoteFlowClient) complete(flowID string, stageID string, value interface{}, loc *codeLoc) bool {
-	panic("Not implemented")
+	p := flowSvc.NewCompleteStageExternallyParams().WithFlowID(flowID).WithStageID(stageID)
+	ok, err := c.flows.CompleteStageExternally(p)
+	if err != nil {
+		log.Fatalf("Failed to add completed stage: %v", err)
+	}
+	return ok.Payload.Successful
 }
 
-func (c *remoteFlowClient) invokeFunction(flowID string, functionID string, req *HTTPRequest, loc *codeLoc) string {
-	panic("Not implemented!")
+func (c *remoteFlowClient) invokeFunction(flowID string, functionID string, arg *api.HTTPRequest, loc *codeLoc) string {
+	// TODO convert between api.HTTPRequest and model version
+
+	req := &models.ModelAddInvokeFunctionStageRequest{
+		CodeLocation: loc.String(),
+		FlowID:       flowID,
+		FunctionID:   functionID,
+		Arg:          &models.ModelHTTPReqDatum{},
+	}
+	p := flowSvc.NewAddInvokeFunctionParams().WithFlowID(flowID).WithBody(req)
+
+	ok, err := c.flows.AddInvokeFunction(p)
+	if err != nil {
+		log.Fatalf("Failed to add invoke stage: %v", err)
+	}
+	return ok.Payload.StageID
 }
 
 func (c *remoteFlowClient) delay(flowID string, duration time.Duration, loc *codeLoc) string {
-	// timeMs := int64(duration / time.Millisecond)
-	panic("Not implemented")
-	//
+	req := &models.ModelAddDelayStageRequest{
+		CodeLocation: loc.String(),
+		FlowID:       flowID,
+		DelayMs:      int64(duration / time.Millisecond),
+	}
+	p := flowSvc.NewAddDelayParams().WithFlowID(flowID).WithBody(req)
+
+	ok, err := c.flows.AddDelay(p)
+	if err != nil {
+		log.Fatalf("Failed to add delay stage: %v", err)
+	}
+	return ok.Payload.StageID
 }
 
 func (c *remoteFlowClient) getAsync(flowID string, stageID string, rType reflect.Type) (chan interface{}, chan error) {
@@ -208,7 +235,7 @@ func (c *remoteFlowClient) get(flowID string, stageID string, rType reflect.Type
 	}
 
 	result := ok.Payload.Result
-	val := result.DecodeValue(flowID, rType, c.blobStore)
+	val := decodeResult(result, flowID, rType, c.blobStore)
 	if result.Successful {
 		debug("Getting successful result")
 		valueCh <- val

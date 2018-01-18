@@ -52,7 +52,7 @@ func (in *InvokeStageRequest) invoke() {
 	var args []interface{}
 	for i, arg := range in.Args {
 		debug(fmt.Sprintf("Decoding arg of type %v", argTypes[i]))
-		args = append(args, arg.DecodeValue(in.FlowID, argTypes[i], blobstore.GetBlobStore()))
+		args = append(args, decodeResult(arg, in.FlowID, argTypes[i], blobstore.GetBlobStore()))
 	}
 
 	result, err := invokeFunc(actionFunc, args)
