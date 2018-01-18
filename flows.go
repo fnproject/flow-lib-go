@@ -2,6 +2,7 @@ package flow
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
@@ -11,9 +12,15 @@ import (
 )
 
 type HTTPRequest struct {
+	Headers http.Header
+	Method  string
+	Body    []byte
 }
 
 type HTTPResponse struct {
+	StatusCode int
+	Headers    http.Header
+	Body       []byte
 }
 
 type Flow interface {
