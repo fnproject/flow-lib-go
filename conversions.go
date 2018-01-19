@@ -163,6 +163,10 @@ func datumToValue(datum interface{}, flowID string, rType reflect.Type, blobStor
 
 func datumToError(datum interface{}, flowID string, blobStore blobstore.BlobStoreClient) error {
 	switch d := datum.(type) {
+
+	case *models.ModelEmptyDatum:
+		return nil
+
 	case *models.ModelBlobDatum:
 		if d.ContentType != JSONMediaHeader {
 			panic(fmt.Sprintf("Unsupported blob content type for error %v", d.ContentType))
