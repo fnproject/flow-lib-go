@@ -1,8 +1,8 @@
-# Serverless Orchestration with Go
+# Serverless Workflows with Go
 Easily create serverless workflows directly in Go with the power of [Fn Flow](https://github.com/fnproject/flow).
 
 ## Quick Intro
-Simply import this library into your go function, deploy it on fn, and start using the power of [Fn Flow](https://github.com/fnproject/flow).
+Simply import this library into your go function, build and deploy onto Fn.
 
 ```go
 package main
