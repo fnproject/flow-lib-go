@@ -112,10 +112,12 @@ func encodeError(e error) *bytes.Buffer {
 func decodeResult(result *models.ModelCompletionResult, flowID string, rType reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	// special case since ModelEmptyDatum is an alias for the empty interface
 	if result.Datum.Empty != nil {
+		debug("Decoded nil result")
 		return nil
 	}
 
 	datum := result.Datum.InnerDatum()
+	debug(fmt.Sprintf("Decoded datum of type %v", reflect.TypeOf(datum))
 	if result.Successful {
 		return datumToValue(datum, flowID, rType, blobStore)
 	} else {
