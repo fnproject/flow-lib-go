@@ -117,7 +117,7 @@ func decodeResult(result *models.ModelCompletionResult, flowID string, rType ref
 	}
 
 	datum := result.Datum.InnerDatum()
-	debug(fmt.Sprintf("Decoded datum of type %v", reflect.TypeOf(datum))
+	debug(fmt.Sprintf("Decoded datum of type %v", reflect.TypeOf(datum)))
 	if result.Successful {
 		return datumToValue(datum, flowID, rType, blobStore)
 	} else {
