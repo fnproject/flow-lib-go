@@ -4,11 +4,11 @@ GOPACKAGES = $(shell go list ./...  | grep -v /vendor/)
 # Just builds
 all: test build
 
-dep: glide.yaml
-	glide install --strip-vendor
+dep:
+	dep ensure
 
 dep-up:
-	glide up --strip-vendor
+	dep ensure -update
 
 test: 
 	go test -v -cover $(GOPACKAGES)
