@@ -1,5 +1,5 @@
-# Fn Flow Library for Go
-An Fn Flow library for your Go runtimes.
+# Orchestration for your Go Functions
+Easily create serverless workflows directly in Go with the power of [Fn Flow](https://github.com/fnproject/flow).
 
 ## Quick Intro
 Simply import this library into your go function, deploy it on fn, and start using the power of [Fn Flow](https://github.com/fnproject/flow).
