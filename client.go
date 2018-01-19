@@ -82,8 +82,15 @@ func (c *remoteFlowClient) createFlow(functionID string) string {
 }
 
 func (c *remoteFlowClient) addStageWithClosure(flowID string, op models.ModelCompletionOperation, actionFunc interface{}, loc *codeLoc, deps ...string) string {
+	var closureDatum *models.ModelBlobDatum
+	if actionFunc == nil {
+		closureDatum = nil
+	} else {
+		closureDatum = actionToModel(actionFunc, flowID, c.blobStore)
+	}
+
 	req := &models.ModelAddStageRequest{
-		Closure:      actionToModel(actionFunc, flowID, c.blobStore),
+		Closure:      closureDatum,
 		CodeLocation: loc.String(),
 		Deps:         deps,
 		FlowID:       flowID,
@@ -178,7 +185,14 @@ func (c *remoteFlowClient) exceptionallyCompose(flowID string, stageID string, a
 }
 
 func (c *remoteFlowClient) complete(flowID string, stageID string, value interface{}, loc *codeLoc) bool {
-	p := flowSvc.NewCompleteStageExternallyParams().WithFlowID(flowID).WithStageID(stageID)
+	req := &models.ModelCompleteStageExternallyRequest{
+		CodeLocation: loc.String(),
+		FlowID:       flowID,
+		StageID:      stageID,
+		Value:        valueToModel(value, flowID, c.blobStore),
+	}
+	p := flowSvc.NewCompleteStageExternallyParams().WithFlowID(flowID).WithStageID(stageID).WithBody(req)
+
 	ok, err := c.flows.CompleteStageExternally(p)
 	if err != nil {
 		log.Fatalf("Failed to add completed stage: %v", err)
