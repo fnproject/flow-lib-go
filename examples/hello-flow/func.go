@@ -30,7 +30,7 @@ func main() {
 	//composedExample()
 	//delayExample()
 	//invokeExample()
-	//externalExample()
+	//completeExample()
 }
 
 func stringExample() {
@@ -120,12 +120,14 @@ func TransformExternalRequest(req *flows.HTTPRequest) string {
 	return result
 }
 
-func externalExample() {
+func completeExample() {
 	flows.WithFlow(
 		func() {
-			f := flows.CurrentFlow().ExternalFuture()
-			fmt.Printf("Post your payload to %v\n", f.CompletionURL())
-			f.ThenApply(TransformExternalRequest)
+			cs := flows.CurrentFlow().EmptyFuture()
+			cf := cs.ThenApply(strings.ToUpper)
+			cs.Complete("foo")
+			valueCh, errorCh := cf.Get()
+			printResult(valueCh, errorCh)
 		})
 }
 
