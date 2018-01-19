@@ -1,4 +1,4 @@
-# Writing FnFlow Applications in Go
+# Writing Flow Applications in Go
 
 ## Prerequisites
 ```
