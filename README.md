@@ -8,6 +8,10 @@ Simply import this library into your go function, deploy it on fn, and start usi
 package main
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	flows "github.com/fnproject/flow-lib-go"
 )
 
