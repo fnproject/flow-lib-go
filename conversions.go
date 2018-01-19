@@ -111,6 +111,10 @@ func encodeError(e error) *bytes.Buffer {
 // converts back to Go and API types - yuck!
 func decodeResult(result *models.ModelCompletionResult, flowID string, rType reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	datum := result.Datum.InnerDatum()
+	if datum == nil { // special case since ModelEmptyDatum is an alias for the empty interface
+		return nil
+	}
+
 	if result.Successful {
 		return datumToValue(datum, flowID, rType, blobStore)
 	} else {
@@ -120,8 +124,6 @@ func decodeResult(result *models.ModelCompletionResult, flowID string, rType ref
 
 func datumToValue(datum interface{}, flowID string, rType reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
 	switch d := datum.(type) {
-	case *models.ModelEmptyDatum:
-		return nil
 
 	case *models.ModelBlobDatum:
 		if d.ContentType != GobMediaHeader {
@@ -163,9 +165,6 @@ func datumToValue(datum interface{}, flowID string, rType reflect.Type, blobStor
 
 func datumToError(datum interface{}, flowID string, blobStore blobstore.BlobStoreClient) error {
 	switch d := datum.(type) {
-
-	case *models.ModelEmptyDatum:
-		return nil
 
 	case *models.ModelBlobDatum:
 		if d.ContentType != JSONMediaHeader {
