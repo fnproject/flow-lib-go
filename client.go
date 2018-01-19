@@ -252,7 +252,7 @@ func (c *remoteFlowClient) get(flowID string, stageID string, rType reflect.Type
 		valueCh <- val
 	} else {
 		debug("Getting failed result")
-		errorCh <- err
+		errorCh <- val.(error)
 	}
 }
 
