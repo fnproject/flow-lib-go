@@ -1,4 +1,4 @@
-# Orchestration for your Go Functions
+# Serverless Orchestration with Go
 Easily create serverless workflows directly in Go with the power of [Fn Flow](https://github.com/fnproject/flow).
 
 ## Quick Intro
