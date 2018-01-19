@@ -187,13 +187,11 @@ func (c *remoteFlowClient) complete(flowID string, stageID string, value interfa
 }
 
 func (c *remoteFlowClient) invokeFunction(flowID string, functionID string, arg *HTTPRequest, loc *codeLoc) string {
-	// TODO convert between HTTPRequest and model version
-
 	req := &models.ModelAddInvokeFunctionStageRequest{
 		CodeLocation: loc.String(),
 		FlowID:       flowID,
 		FunctionID:   functionID,
-		Arg:          &models.ModelHTTPReqDatum{},
+		Arg:          requestToModel(arg, flowID, c.blobStore),
 	}
 	p := flowSvc.NewAddInvokeFunctionParams().WithFlowID(flowID).WithBody(req)
 

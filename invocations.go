@@ -14,12 +14,14 @@ import (
 
 const (
 	// protocol headers
-	HeaderPrefix  = "FnProject-"
-	FlowIDHeader  = HeaderPrefix + "FlowID"
-	StageIDHeader = HeaderPrefix + "StageID"
+	HeaderPrefix      = "FnProject-"
+	FlowIDHeader      = HeaderPrefix + "FlowID"
+	StageIDHeader     = HeaderPrefix + "StageID"
+	ContentTypeHeader = "Content-Type"
 
 	JSONMediaHeader         = "application/json"
 	GobMediaHeader          = "application/x-gob"
+	OctetStreamMediaHeader  = "application/octet-stream"
 	MaxContinuationArgCount = 2
 )
 

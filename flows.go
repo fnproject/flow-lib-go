@@ -18,7 +18,7 @@ type HTTPRequest struct {
 }
 
 type HTTPResponse struct {
-	StatusCode int
+	StatusCode int32
 	Headers    http.Header
 	Body       []byte
 }

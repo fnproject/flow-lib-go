@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"reflect"
 
 	"github.com/fnproject/flow-lib-go/blobstore"
@@ -65,6 +66,22 @@ func valueToModel(value interface{}, flowID string, blobStore blobstore.BlobStor
 	return &models.ModelCompletionResult{Successful: !isErr, Datum: datum}
 }
 
+func requestToModel(req *HTTPRequest, flowID string, blobStore blobstore.BlobStoreClient) *models.ModelHTTPReqDatum {
+	cType := req.Headers.Get(ContentTypeHeader)
+	if cType == "" {
+		cType = OctetStreamMediaHeader
+	}
+	b := blobStore.WriteBlob(flowID, cType, bytes.NewReader(req.Body))
+
+	var headers []*models.ModelHTTPHeader
+	for key, values := range req.Headers {
+		for _, value := range values {
+			headers = append(headers, &models.ModelHTTPHeader{Key: key, Value: value})
+		}
+	}
+	return &models.ModelHTTPReqDatum{Body: b.BlobDatum(), Headers: headers, Method: models.ModelHTTPMethod(req.Method)}
+}
+
 func encodeAction(actionFunc interface{}) *bytes.Buffer {
 	cr := newActionRef(actionFunc)
 	var buf bytes.Buffer
@@ -115,12 +132,22 @@ func datumToValue(datum interface{}, flowID string, rType reflect.Type, blobStor
 		return result
 
 	case *models.ModelHTTPReqDatum:
-		// TODO convert to HTTPReq
-		return &HTTPRequest{}
+		var buf bytes.Buffer
+		blobStore.ReadBlob(flowID, d.Body.BlobID, d.Body.ContentType, func(b io.ReadCloser) { buf.ReadFrom(b) })
+		var headers http.Header
+		for _, header := range d.Headers {
+			headers.Add(header.Key, header.Value)
+		}
+		return &HTTPRequest{Body: buf.Bytes(), Headers: headers, Method: string(d.Method)}
 
 	case *models.ModelHTTPRespDatum:
-		// TODO convert to HTTPResp
-		return &HTTPResponse{}
+		var buf bytes.Buffer
+		blobStore.ReadBlob(flowID, d.Body.BlobID, d.Body.ContentType, func(b io.ReadCloser) { buf.ReadFrom(b) })
+		var headers http.Header
+		for _, header := range d.Headers {
+			headers.Add(header.Key, header.Value)
+		}
+		return &HTTPResponse{Body: buf.Bytes(), Headers: headers, StatusCode: d.StatusCode}
 
 	case *models.ModelStageRefDatum:
 		return &flowFuture{flow: CurrentFlow().(*flow), stageID: d.StageID}

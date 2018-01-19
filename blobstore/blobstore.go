@@ -10,6 +10,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/fnproject/flow-lib-go/models"
 )
 
 var onceBS sync.Once
@@ -31,6 +33,10 @@ type BlobResponse struct {
 	BlobId      string `json:"blob_id"`
 	BlobLength  int64  `json:"length"`
 	ContentType string `json:"content_type"`
+}
+
+func (br *BlobResponse) BlobDatum() *models.ModelBlobDatum {
+	return &models.ModelBlobDatum{BlobID: br.BlobId, ContentType: br.ContentType, Length: br.BlobLength}
 }
 
 type BlobStoreClient interface {
