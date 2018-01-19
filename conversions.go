@@ -110,11 +110,12 @@ func encodeError(e error) *bytes.Buffer {
 
 // converts back to Go and API types - yuck!
 func decodeResult(result *models.ModelCompletionResult, flowID string, rType reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
-	datum := result.Datum.InnerDatum()
-	if datum == nil { // special case since ModelEmptyDatum is an alias for the empty interface
+	// special case since ModelEmptyDatum is an alias for the empty interface
+	if result.Datum.Empty != nil {
 		return nil
 	}
 
+	datum := result.Datum.InnerDatum()
 	if result.Successful {
 		return datumToValue(datum, flowID, rType, blobStore)
 	} else {
