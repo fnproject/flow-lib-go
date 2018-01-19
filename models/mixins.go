@@ -13,6 +13,8 @@ func (d *ModelDatum) InnerDatum() interface{} {
 		return d.StageRef
 	} else if d.Status != nil {
 		return d.Status
+	} else if d.Empty != nil {
+		return d.Empty
 	}
 	panic("Datum is empty!")
 }
