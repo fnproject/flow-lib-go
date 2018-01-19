@@ -42,4 +42,4 @@ You are now ready to invoke the example:
 ```
 fn call go-flow hello-flow/
 ```
-You should be able to see the following output: _GOT RESULT foo_
+You should be able to see the following output: _Flow succeeded with value foo_
