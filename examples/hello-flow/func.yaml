@@ -1,9 +1,5 @@
-name: example/go-flow
+name: user/go-flow
 version: 0.0.1
 runtime: go
 entrypoint: ./func
-build_image: ""
-run_image: ""
 path: /hello-flow
-expects:
-  config: []
