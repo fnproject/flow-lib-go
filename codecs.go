@@ -45,7 +45,7 @@ func (c *defaultCodec) getRoute() string {
 }
 
 func (c *defaultCodec) isContinuation() bool {
-	_, ok := c.getHeader(StageIDHeader)
+	_, ok := c.getHeader(FlowIDHeader)
 	return ok
 }
 
