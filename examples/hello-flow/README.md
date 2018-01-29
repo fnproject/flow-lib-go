@@ -3,8 +3,8 @@
 ## Prerequisites
 ```
 # ensure you have the latest images
-$ docker pull fnproject/functions:latest
-$ docker pull fnproject/completer:latest
+$ docker pull fnproject/fnserver:latest
+$ docker pull fnproject/flow:latest
 
 # ensure you have the latest fn CLI
 $ curl -LSs https://raw.githubusercontent.com/fnproject/cli/master/install | sh
