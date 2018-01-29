@@ -18,7 +18,7 @@ $ (fn start > /dev/null 2>&1 &)
 sleep 5
 
 # start the Flow Service and point it at the functions server API URL
-$ DOCKER_LOCALHOST=$(docker inspect --type container -f '{{.NetworkSettings.Gateway}}' functions)
+$ DOCKER_LOCALHOST=$(docker inspect --type container -f '{{.NetworkSettings.Gateway}}' fnserver)
 
 $ docker run --rm  \
        -p 8081:8081 \
