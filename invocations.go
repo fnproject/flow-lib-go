@@ -14,8 +14,10 @@ import (
 
 const (
 	// protocol headers
-	HeaderPrefix      = "FnProject-"
-	FlowIDHeader      = HeaderPrefix + "FlowID"
+	HeaderPrefix  = "FnProject-"
+	FlowIDHeader  = HeaderPrefix + "FlowID"
+	StageIDHeader = HeaderPrefix + "StageID"
+
 	ContentTypeHeader = "Content-Type"
 
 	JSONMediaHeader         = "application/json"

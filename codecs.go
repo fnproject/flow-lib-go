@@ -45,7 +45,7 @@ func (c *defaultCodec) getRoute() string {
 }
 
 func (c *defaultCodec) isContinuation() bool {
-	_, ok := c.getHeader(FlowIDHeader)
+	_, ok := c.getHeader(StageIDHeader)
 	return ok
 }
 
@@ -58,9 +58,7 @@ func (c *defaultCodec) getFlowID() string {
 }
 
 func (c *defaultCodec) getHeader(header string) (string, bool) {
-	header = strings.Replace(header, "-", "_", -1)
-	header = fnHeaderPrefix + header
-	return lookupEnv(strings.ToUpper(header))
+	return lookupEnv(fnHeaderPrefix + header)
 }
 
 func getFunctionID(c codec) string {
