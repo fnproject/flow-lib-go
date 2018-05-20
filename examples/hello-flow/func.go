@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -104,13 +105,30 @@ func delayExample() {
 		})
 }
 
+type GreetingRequest struct {
+	Name string `json:"name"`
+}
+
+type GreetingResponse struct {
+	Name       string `json:"name"`
+	Salutation string `json:"salutation"`
+}
+
 func invokeExample() {
 	flows.WithFlow(
 		func() {
-			req := &flows.HTTPRequest{Method: "POST", Body: []byte("payload")}
-			cf := flows.CurrentFlow().InvokeFunction("foo/foofn", req)
-			valueCh, errorCh := cf.Get()
-			printResult(valueCh, errorCh)
+			greeting, err := json.Marshal(GreetingRequest{Name: "Charles"})
+			if err != nil {
+				panic("failed to marshal greeting")
+			}
+			req := &flows.HTTPRequest{Method: "POST", Body: greeting}
+			cf := flows.CurrentFlow().InvokeFunction("flow101/simple-flow", req)
+			valueCh, _ := cf.Get()
+			v := (<-valueCh).(*flows.HTTPResponse)
+
+			var res GreetingResponse
+			json.Unmarshal(v.Body, &res)
+			fmt.Printf("Got HTTP status %v and body %v", v.StatusCode, res)
 		})
 }
 

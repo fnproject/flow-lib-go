@@ -38,7 +38,7 @@
     "client/flow_service",
     "models"
   ]
-  revision = "81a93e27d76925f75e1e91de1d3ceb4ad5dee2e9"
+  revision = "64e114d82dad5d0d7e367adbcd22cc9c89121322"
 
 [[projects]]
   branch = "master"
