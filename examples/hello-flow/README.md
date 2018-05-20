@@ -13,27 +13,26 @@ $ curl -LSs https://raw.githubusercontent.com/fnproject/cli/master/install | sh
 ## Start Services
 ```
 # start the fn server
-$ (fn start > /dev/null 2>&1 &)
+(fn start > /dev/null 2>&1 &)
 
 sleep 5
 
 # start the Flow Service and point it at the functions server API URL
-$ DOCKER_LOCALHOST=$(docker inspect --type container -f '{{.NetworkSettings.Gateway}}' fnserver)
+FNSERVER_IP=$(docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' fnserver)
 
-$ docker run --rm  \
-       -p 8081:8081 \
-       -d \
-       -e API_URL="http://$DOCKER_LOCALHOST:8080/r" \
-       -e no_proxy=$DOCKER_LOCALHOST \
-       --name flow-service \
-       fnproject/flow:latest
+docker run --rm -d \
+     -p 8081:8081 \
+     -e API_URL="http://$FNSERVER_IP:8080/r" \
+     -e no_proxy=$FNSERVER_IP \
+     --name flowserver \
+     fnproject/flow:latest
 ```
 
 ## Deploy Example
 
 Deploy the example application to the functions server:
 ```
-make dep-up deploy
+make dep deploy
 ```
 
 ## Invoke Example

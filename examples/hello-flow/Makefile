@@ -1,7 +1,7 @@
 GOFILES = $(shell find . -name '*.go' -not -path './vendor/*')
 GOPACKAGES = $(shell go list ./...  | grep -v /vendor/)
-DOCKER_LOCALHOST = $(shell docker inspect --type container -f '{{.NetworkSettings.Gateway}}' fnserver | tr -d '\n')
-COMPLETER_SERVER_IP=`docker inspect --type container -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' flow-service`
+FNSERVER_IP=$(docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' fnserver)
+FLOWSERVER_IP=$(docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' flowserver)
 
 # Just builds
 all: deploy
@@ -17,7 +17,11 @@ test:
 
 deploy:
 	fn deploy --app go-flow 
-	fn apps config set go-flow COMPLETER_BASE_URL "http://$(DOCKER_LOCALHOST):8081"
+	fn apps config set go-flow COMPLETER_BASE_URL "http://$(FLOWSERVER_IP):8081"
+
+deploy-local:
+	fn deploy --app go-flow --local
+	fn apps config set go-flow COMPLETER_BASE_URL "http://$(FLOWSERVER_IP):8081"
 
 call:
 	fn call go-flow hello-flow/
