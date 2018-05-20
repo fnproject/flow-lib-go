@@ -1,7 +1,7 @@
 GOFILES = $(shell find . -name '*.go' -not -path './vendor/*')
 GOPACKAGES = $(shell go list ./...  | grep -v /vendor/)
-FNSERVER_IP=$(docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' fnserver)
-FLOWSERVER_IP=$(docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' flowserver)
+FNSERVER_IP=$(shell docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' fnserver)
+FLOWSERVER_IP=$(shell docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' flowserver)
 
 # Just builds
 all: deploy
