@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/fnproject/flow-lib-go/blobstore"
 	"github.com/fnproject/flow-lib-go/models"
@@ -79,7 +80,7 @@ func requestToModel(req *HTTPRequest, flowID string, blobStore blobstore.BlobSto
 			headers = append(headers, &models.ModelHTTPHeader{Key: key, Value: value})
 		}
 	}
-	return &models.ModelHTTPReqDatum{Body: b.BlobDatum(), Headers: headers, Method: models.ModelHTTPMethod(req.Method)}
+	return &models.ModelHTTPReqDatum{Body: b.BlobDatum(), Headers: headers, Method: models.ModelHTTPMethod(strings.ToLower(req.Method))}
 }
 
 func encodeAction(actionFunc interface{}) *bytes.Buffer {
@@ -148,7 +149,7 @@ func datumToValue(datum interface{}, flowID string, rType reflect.Type, blobStor
 	case *models.ModelHTTPRespDatum:
 		var buf bytes.Buffer
 		blobStore.ReadBlob(flowID, d.Body.BlobID, d.Body.ContentType, func(b io.ReadCloser) { buf.ReadFrom(b) })
-		var headers http.Header
+		headers := make(http.Header)
 		for _, header := range d.Headers {
 			headers.Add(header.Key, header.Value)
 		}
