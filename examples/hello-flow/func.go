@@ -122,7 +122,7 @@ func invokeExample() {
 				panic("failed to marshal greeting")
 			}
 			req := &flows.HTTPRequest{Method: "POST", Body: greeting}
-			cf := flows.CurrentFlow().InvokeFunction("flow101/simple-flow", req)
+			cf := flows.CurrentFlow().InvokeFunction("examples/greeter", req)
 			valueCh, _ := cf.Get()
 			v := (<-valueCh).(*flows.HTTPResponse)
 
