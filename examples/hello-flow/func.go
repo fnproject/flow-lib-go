@@ -123,12 +123,22 @@ func invokeExample() {
 			}
 			req := &flows.HTTPRequest{Method: "POST", Body: greeting}
 			cf := flows.CurrentFlow().InvokeFunction("examples/greeter", req)
-			valueCh, _ := cf.Get()
-			v := (<-valueCh).(*flows.HTTPResponse)
+			valueCh, errorCh := cf.Get()
 
-			var res GreetingResponse
-			json.Unmarshal(v.Body, &res)
-			fmt.Printf("Got HTTP status %v and body %v", v.StatusCode, res)
+			select {
+			case value := <-valueCh:
+				resp, ok := value.(*flows.HTTPResponse)
+				if !ok {
+					panic("received unexpected value from the server")
+				}
+				var gr GreetingResponse
+				json.Unmarshal(resp.Body, &gr)
+				fmt.Printf("Got HTTP status %v and payload %v", resp.StatusCode, gr)
+			case err := <-errorCh:
+				fmt.Printf("Flow failed with error %v", err)
+			case <-time.After(time.Minute * 1):
+				fmt.Printf("Timed out!")
+			}
 		})
 }
 
