@@ -30,6 +30,8 @@ docker run --rm -d \
 
 ## Deploy Example
 
+Install [golang dep](https://github.com/golang/dep) if you haven't already.
+
 Deploy the example application to the functions server:
 ```
 make dep-up deploy-local
