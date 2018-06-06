@@ -21,15 +21,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/fnproject/fdk-go"
-  packages = [
-    ".",
-    "utils"
-  ]
-  revision = "9ce8399e3ce789592e02fae77ee938627a97b407"
-
-[[projects]]
-  branch = "master"
   name = "github.com/fnproject/flow-lib-go"
   packages = [
     ".",
@@ -38,13 +29,13 @@
     "client/flow_service",
     "models"
   ]
-  revision = "64e114d82dad5d0d7e367adbcd22cc9c89121322"
+  revision = "33ca5ea30aa8fb0ec1536992992080b36da07efa"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/analysis"
   packages = ["."]
-  revision = "863ac7f90e00e88e507095639a8457bbbf3c2ec9"
+  revision = "5957818e100395077187fb7ef3b8a28227af06c6"
 
 [[projects]]
   branch = "master"
@@ -117,7 +108,7 @@
     "jlexer",
     "jwriter"
   ]
-  revision = "8b799c424f57fa123fc63a99d6383bc6e4c02578"
+  revision = "9825584555aa620c53c265d4a09ace0df1346fd9"
 
 [[projects]]
   branch = "master"
@@ -133,7 +124,7 @@
     "context/ctxhttp",
     "idna"
   ]
-  revision = "57065200b4b034a1c8ad54ff77069408c2218ae6"
+  revision = "1e491301e022f8f977054da4c2d852decd59571f"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -175,6 +166,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8c9b0bae7332e255d3da07cdb29eaf6af212a36a2b90262d036a64c48107592e"
+  inputs-digest = "35296bdd55924403ce8298be85d92d37d9b50dddbbae234b68819e0f4d0f34ec"
   solver-name = "gps-cdcl"
   solver-version = 1
