@@ -16,38 +16,32 @@
 [[projects]]
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
-  revision = "521b25f4b05fd26bec69d9dedeb8f9c9a83939a8"
-  version = "v8"
-
-[[projects]]
-  name = "github.com/davecgh/go-spew"
-  packages = ["spew"]
-  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
-  version = "v1.1.0"
+  revision = "ccb8e960c48f04d6935e72476ae4a51028f9e22f"
+  version = "v9"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/analysis"
   packages = ["."]
-  revision = "0db1e4cf47d6eb0fc6b25135868c3483cc6b066e"
+  revision = "5957818e100395077187fb7ef3b8a28227af06c6"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/errors"
   packages = ["."]
-  revision = "7bcb96a367bac6b76e6e42fa84155bb5581dcff8"
+  revision = "b2b2befaf267d082d779bcef52d682a47c779517"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/jsonpointer"
   packages = ["."]
-  revision = "779f45308c19820f1a69e9a4cd965f496e0da10f"
+  revision = "3a0015ad55fa9873f41605d3e8f28cd279c32ab2"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/jsonreference"
   packages = ["."]
-  revision = "36d33bfe519efae5632669801b180bf1a245da3b"
+  revision = "3fb327e6747da3043567ee86abd02bb6376b6be2"
 
 [[projects]]
   branch = "master"
@@ -68,31 +62,31 @@
     "middleware/untyped",
     "security"
   ]
-  revision = "a76104f379d3c5041f2a56e69db3ad8404ce4826"
+  revision = "c0cae94704c76c8643896d8054080f91e920105b"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/spec"
   packages = ["."]
-  revision = "fa03337d7da5735229ee8f5e9d5d0b996014b7f8"
+  revision = "bcff419492eeeb01f76e77d2ebc714dc97b607f5"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/strfmt"
   packages = ["."]
-  revision = "4dd3d302e100bae008baedc42d446ce83bdd10ad"
+  revision = "481808443b00a14745fada967cb5eeff0f9b1df2"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/swag"
   packages = ["."]
-  revision = "84f4bee7c0a6db40e3166044c7983c1c32125429"
+  revision = "811b1089cde9dad18d4d0c2d09fbdbf28dbd27a5"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/validate"
   packages = ["."]
-  revision = "9b5947525af6a4843d2b9576e5943b9931ad535d"
+  revision = "9286f6d0e5c1ffc7cf2bda1d59291dc3c4f2f828"
 
 [[projects]]
   branch = "master"
@@ -102,25 +96,13 @@
     "jlexer",
     "jwriter"
   ]
-  revision = "32fa128f234d041f196a9f3e0fea5ac9772c08e1"
+  revision = "9825584555aa620c53c265d4a09ace0df1346fd9"
 
 [[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "b4575eea38cca1123ec2dc90c26529b5c5acfcff"
-
-[[projects]]
-  name = "github.com/pmezard/go-difflib"
-  packages = ["difflib"]
-  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
-  version = "v1.0.0"
-
-[[projects]]
-  name = "github.com/stretchr/testify"
-  packages = ["assert"]
-  revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
-  version = "v1.2.0"
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
   branch = "master"
@@ -130,10 +112,9 @@
     "context/ctxhttp",
     "idna"
   ]
-  revision = "ab555f366c4508dbe0802550b1b20c46c5c18aa0"
+  revision = "1e491301e022f8f977054da4c2d852decd59571f"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -152,7 +133,8 @@
     "unicode/rangetable",
     "width"
   ]
-  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "v2"
@@ -164,14 +146,14 @@
   revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
 
 [[projects]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ab260aa9913d111ac647617834d2bfc9b06d2882808d9a42f6030f49adbf54c5"
+  inputs-digest = "7066b3db1125614a89e6a57970be9d0291ab5d9106424cb2e41544a7344aeacd"
   solver-name = "gps-cdcl"
   solver-version = 1
