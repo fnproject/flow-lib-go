@@ -32,6 +32,8 @@ func main() {
 	//delayExample()
 	//invokeExample()
 	//completeExample()
+	//anyOfExample()
+	//allOfExample()
 }
 
 func stringExample() {
@@ -139,6 +141,34 @@ func invokeExample() {
 			case <-time.After(time.Minute * 1):
 				fmt.Printf("Timed out!")
 			}
+		})
+}
+
+func anyOfExample() {
+	flows.WithFlow(
+		func() {
+
+			cf := flows.CurrentFlow()
+			s1 := cf.CompletedValue("first")
+			s2 := cf.Delay(2 * time.Second).ThenRun(EmptyFunc)
+
+			s3 := cf.AnyOf(s1, s2).ThenApply(strings.ToUpper)
+			valueCh, errorCh := s3.Get()
+			printResult(valueCh, errorCh)
+		})
+}
+
+func allOfExample() {
+	flows.WithFlow(
+		func() {
+
+			cf := flows.CurrentFlow()
+			s1 := cf.CompletedValue("first")
+			s2 := cf.Delay(2 * time.Second)
+
+			s3 := cf.AllOf(s1, s2).ThenRun(EmptyFunc)
+			valueCh, errorCh := s3.Get()
+			printResult(valueCh, errorCh)
 		})
 }
 

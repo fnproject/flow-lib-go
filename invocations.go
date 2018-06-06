@@ -85,10 +85,6 @@ func handleInvocation(codec codec) {
 	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
 		panic(fmt.Sprintf("Failed to decode stage invocation request: %v", err))
 	}
-	if len(in.Args) < 1 {
-		panic("Invalid multipart continuation, need at least one argument")
-	}
-
 	in.invoke()
 }
 
