@@ -237,7 +237,32 @@ func (cf *flow) AllOf(futures ...FlowFuture) FlowFuture {
 
 func (cf *flow) AnyOf(futures ...FlowFuture) FlowFuture {
 	sid := cf.client.anyOf(cf.flowID, futureCids(futures...), newCodeLoc())
-	return &flowFuture{flow: cf, stageID: sid}
+	// If all dependent futures are of the same type, we can introspect
+	// the type as a convenience. Otherwise, we have no way of determining
+	// the return type at runtime
+	var introspected reflect.Type
+	for i, f := range futures {
+		if ff, ok := f.(*flowFuture); ok {
+			if i == 0 {
+				introspected = ff.returnType
+			} else if ff.returnType != introspected {
+				// different types
+				introspected = nil
+				break
+			}
+			introspected = ff.returnType
+			continue
+		}
+		// unknown type
+		introspected = nil
+		break
+	}
+	debug(fmt.Sprintf("Introspected return type %v\n", introspected))
+	return &flowFuture{
+		flow:       cf,
+		stageID:    sid,
+		returnType: introspected,
+	}
 }
 
 func (f *flowFuture) Get() (chan interface{}, chan error) {
