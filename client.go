@@ -234,11 +234,7 @@ func (c *remoteFlowClient) delay(flowID string, duration time.Duration, loc *cod
 func (c *remoteFlowClient) getAsync(flowID string, stageID string, rType reflect.Type) (chan interface{}, chan error) {
 	valueCh := make(chan interface{}, 1)
 	errorCh := make(chan error, 1)
-	if rType == nil {
-		valueCh <- nil
-	} else {
-		go c.get(flowID, stageID, rType, valueCh, errorCh)
-	}
+	go c.get(flowID, stageID, rType, valueCh, errorCh)
 	return valueCh, errorCh
 }
 

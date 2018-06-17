@@ -111,6 +111,10 @@ func encodeError(e error) *bytes.Buffer {
 
 // converts back to Go and API types - yuck!
 func decodeResult(result *models.ModelCompletionResult, flowID string, rType reflect.Type, blobStore blobstore.BlobStoreClient) interface{} {
+	if rType == nil {
+		debug("Returning nil since no return type info available")
+		return nil
+	}
 	// special case since ModelEmptyDatum is an alias for the empty interface
 	if result.Datum.Empty != nil {
 		debug("Decoded nil result")
