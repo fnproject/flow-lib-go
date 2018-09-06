@@ -2,7 +2,7 @@
 Easily create serverless workflows directly in Go with the power of [Fn Flow](https://github.com/fnproject/flow).
 
 ## Quick Intro
-Simply import this library into your go function, build and deploy onto Fn.
+Simply import this library into your go function, build and deploy onto Fn. Flows use the [fdk-go](https://github.com/fnproject/fdk-go) to handle interacting with Fn, below is an example flow:
 
 ```go
 package main
@@ -12,30 +12,30 @@ import (
 	"strings"
 	"time"
 
-  fdk "github.com/fnproject/fdk-go"
-  flows "github.com/fnproject/flow-lib-go"
+  	fdk "github.com/fnproject/fdk-go"
+  	flows "github.com/fnproject/flow-lib-go"
 )
 
 func init() {
-  flows.RegisterAction(strings.ToUpper)
-  flows.RegisterAction(strings.ToLower)
+  	flows.RegisterAction(strings.ToUpper)
+  	flows.RegisterAction(strings.ToLower)
 }
 
 func main() {
-  fdk.Handle(flows.WithFlow(
-    fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
-      cf := flows.CurrentFlow().CompletedValue("foo")
-      valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-      select {
-      case value := <-valueCh:
-        fmt.Fprintf(w, "Flow succeeded with value %v", value)
-      case err := <-errorCh:
-        fmt.Fprintf(w, "Flow failed with error %v", err)
-      case <-time.After(time.Minute * 1):
-        fmt.Fprintf(w, "Timed out!")
-      }
-    }),
-  )
+	fdk.Handle(flows.WithFlow(
+    		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
+      			cf := flows.CurrentFlow().CompletedValue("foo")
+      			valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
+      			select {
+      			case value := <-valueCh:
+        			fmt.Fprintf(w, "Flow succeeded with value %v", value)
+      			case err := <-errorCh:
+        			fmt.Fprintf(w, "Flow failed with error %v", err)
+      			case <-time.After(time.Minute * 1):
+        			fmt.Fprintf(w, "Timed out!")
+      			}
+    		}),
+  	)
 }
 ```
 
@@ -70,10 +70,6 @@ No. Only continuation actions implemented with functions are supported, since th
 Go allows functions to return error types in addition to a result via its support for multiple return values. If a continuation function returns a (non-nil) error as its second return value, its error message will be serialized and form the failed value of that stage.
 
 If a panic occurs while invoking the continuation function, the panic value will be captured and the stage failed with the same value.
-
-### Are hot functions supported?
-
-Currently only cold functions are supported.
 
 ### Can I invoke other fn functions?
 
