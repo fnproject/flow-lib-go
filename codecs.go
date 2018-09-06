@@ -1,15 +1,18 @@
 package flow
 
 import (
-	"strings"
+	"context"
+	"fmt"
+	"io"
+
+	fdk "github.com/fnproject/fdk-go"
 )
 
 const (
 	method         = "FN_METHOD"
-	appNameEnv     = "FN_APP_NAME"
-	pathEnv        = "FN_PATH"
-	reqUrlEnv      = "FN_REQUEST_URL"
-	formatEnv      = "FN_FORMAT"
+	appName        = "FN_APP_NAME"
+	path           = "FN_PATH"
+	format         = "FN_FORMAT"
 	fnHeaderPrefix = "FN_HEADER_"
 )
 
@@ -17,39 +20,35 @@ type codec interface {
 	getAppName() string
 	getRoute() string
 	isContinuation() bool
-	getHeader(string) (string, bool)
 	getFlowID() string
+	in() io.Reader
+	out() io.Writer
 }
 
-type defaultCodec struct {
-	appName string
-	route   string
+type fdkCodec struct {
+	ctx    context.Context
+	input  io.Reader
+	output io.Writer
 }
 
-func newCodec() codec {
-	if format, ok := lookupEnv(formatEnv); ok && strings.ToLower(format) == "http" {
-		panic("Hot functions not supported!")
-	}
-	return &defaultCodec{
-		appName: lookupReqEnv(appNameEnv),
-		route:   lookupReqEnv(pathEnv),
-	}
+func newCodec(ctx context.Context, in io.Reader, out io.Writer) codec {
+	return &fdkCodec{ctx, in, out}
 }
 
-func (c *defaultCodec) getAppName() string {
-	return c.appName
+func (c *fdkCodec) getAppName() string {
+	return fdk.Context(c.ctx).Config[appName]
 }
 
-func (c *defaultCodec) getRoute() string {
-	return c.route
+func (c *fdkCodec) getRoute() string {
+	return fdk.Context(c.ctx).Config[path]
 }
 
-func (c *defaultCodec) isContinuation() bool {
+func (c *fdkCodec) isContinuation() bool {
 	_, ok := c.getHeader(StageIDHeader)
 	return ok
 }
 
-func (c *defaultCodec) getFlowID() string {
+func (c *fdkCodec) getFlowID() string {
 	fid, ok := c.getHeader(FlowIDHeader)
 	if !ok {
 		panic("Missing flow ID in continuation")
@@ -57,18 +56,23 @@ func (c *defaultCodec) getFlowID() string {
 	return fid
 }
 
-func (c *defaultCodec) getHeader(header string) (string, bool) {
-	return lookupEnv(fnHeaderPrefix + header)
+func (c *fdkCodec) getHeader(header string) (string, bool) {
+	//debug(fmt.Sprintf("headers: %v", fdk.Context(c.ctx).Header))
+	//debug(fmt.Sprintf("env: %v", os.Environ()))
+
+	v := fdk.Context(c.ctx).Header.Get(header)
+	debug(fmt.Sprintf("header: %s %v %s", header, v != "", v))
+	return v, v != ""
+}
+
+func (c *fdkCodec) in() io.Reader {
+	return c.input
+}
+
+func (c *fdkCodec) out() io.Writer {
+	return c.output
 }
 
 func getFunctionID(c codec) string {
 	return c.getAppName() + c.getRoute()
-}
-
-func lookupReqEnv(key string) string {
-	v, ok := lookupEnv(key)
-	if !ok {
-		panic("Missing required environment variable: " + key)
-	}
-	return v
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	dbg "runtime/debug"
 
@@ -13,10 +12,10 @@ import (
 )
 
 const (
-	// protocol headers
-	HeaderPrefix  = "FnProject-"
-	FlowIDHeader  = HeaderPrefix + "FlowID"
-	StageIDHeader = HeaderPrefix + "StageID"
+	// protocol headers. beware, since we're using go http.Header, casing is sensitive
+	HeaderPrefix  = "Fnproject-"
+	FlowIDHeader  = HeaderPrefix + "Flowid"
+	StageIDHeader = HeaderPrefix + "Stageid"
 
 	ContentTypeHeader = "Content-Type"
 
@@ -38,7 +37,7 @@ type InvokeStageResponse struct {
 	Result *models.ModelCompletionResult `json:"result,omitempty"`
 }
 
-func (in *InvokeStageRequest) invoke() {
+func (in *InvokeStageRequest) invoke(codec codec) {
 	// catch panics and publish them as errors
 	defer func() {
 		if r := recover(); r != nil {
@@ -59,7 +58,7 @@ func (in *InvokeStageRequest) invoke() {
 	}
 
 	result, err := invokeFunc(actionFunc, args)
-	writeResult(in.FlowID, result, err)
+	writeResult(in.FlowID, codec, result, err)
 }
 
 func (in *InvokeStageRequest) action() (actionFunction interface{}) {
@@ -82,10 +81,10 @@ func (in *InvokeStageRequest) action() (actionFunction interface{}) {
 func handleInvocation(codec codec) {
 	debug("Handling continuation")
 	var in InvokeStageRequest
-	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+	if err := json.NewDecoder(codec.in()).Decode(&in); err != nil {
 		panic(fmt.Sprintf("Failed to decode stage invocation request: %v", err))
 	}
-	in.invoke()
+	in.invoke(codec)
 }
 
 func invokeFunc(continuation interface{}, args []interface{}) (result interface{}, err error) {
@@ -120,7 +119,7 @@ func invokeFunc(continuation interface{}, args []interface{}) (result interface{
 	}
 }
 
-func writeResult(flowID string, result interface{}, err error) {
+func writeResult(flowID string, codec codec, result interface{}, err error) {
 	var val interface{}
 	if err == nil {
 		debug(fmt.Sprintf("Writing successful result %v", result))
@@ -130,7 +129,7 @@ func writeResult(flowID string, result interface{}, err error) {
 		val = err
 	}
 	resp := &InvokeStageResponse{Result: valueToModel(val, flowID, blobstore.GetBlobStore())}
-	if err := json.NewEncoder(os.Stdout).Encode(resp); err != nil {
+	if err := json.NewEncoder(codec.out()).Encode(resp); err != nil {
 		panic("Failed to encode completion result")
 	}
 }
