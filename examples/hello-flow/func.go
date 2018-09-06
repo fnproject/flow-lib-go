@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"time"
 
+	fdk "github.com/fnproject/fdk-go"
 	flows "github.com/fnproject/flow-lib-go"
 )
 
@@ -24,7 +27,7 @@ func init() {
 }
 
 func main() {
-	stringExample()
+	fdk.Handle(stringExample())
 	//errorValueExample()
 	//errorFuncExample()
 	//structExample()
@@ -36,22 +39,22 @@ func main() {
 	//allOfExample()
 }
 
-func stringExample() {
-	flows.WithFlow(
-		func() {
+func stringExample() fdk.Handler {
+	return flows.WithFlow(
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue("foo")
 			valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 func errorValueExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue(errors.New("foo"))
 			valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 func FailedFunc(arg string) (string, error) {
@@ -69,11 +72,11 @@ func HandleFunc(arg string, err error) string {
 
 func errorFuncExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue("hello")
 			valueCh, errorCh := cf.ThenApply(FailedFunc).Handle(HandleFunc).Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 type foo struct {
@@ -87,11 +90,11 @@ func FooToUpper(f *foo) *foo {
 
 func structExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue(&foo{Name: "foo"})
 			valueCh, errorCh := cf.ThenApply(FooToUpper).Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 func EmptyFunc() string {
@@ -100,11 +103,11 @@ func EmptyFunc() string {
 
 func delayExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().Delay(5 * time.Second).ThenApply(EmptyFunc)
 			valueCh, errorCh := cf.Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 type GreetingRequest struct {
@@ -118,7 +121,7 @@ type GreetingResponse struct {
 
 func invokeExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			greeting, err := json.Marshal(GreetingRequest{Name: "Charles"})
 			if err != nil {
 				panic("failed to marshal greeting")
@@ -135,18 +138,18 @@ func invokeExample() {
 				}
 				var gr GreetingResponse
 				json.Unmarshal(resp.Body, &gr)
-				fmt.Printf("Got HTTP status %v and payload %v", resp.StatusCode, gr)
+				fmt.Fprintf(w, "Got HTTP status %v and payload %v", resp.StatusCode, gr)
 			case err := <-errorCh:
-				fmt.Printf("Flow failed with error %v", err)
+				fmt.Fprintf(w, "Flow failed with error %v", err)
 			case <-time.After(time.Minute * 1):
-				fmt.Printf("Timed out!")
+				fmt.Fprintf(w, "Timed out!")
 			}
-		})
+		}))
 }
 
 func anyOfExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 
 			cf := flows.CurrentFlow()
 			s1 := cf.CompletedValue("first")
@@ -154,13 +157,13 @@ func anyOfExample() {
 
 			s3 := cf.AnyOf(s1, s2).ThenApply(strings.ToUpper)
 			valueCh, errorCh := s3.Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 func allOfExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 
 			cf := flows.CurrentFlow()
 			s1 := cf.CompletedValue("first")
@@ -168,8 +171,8 @@ func allOfExample() {
 
 			s3 := cf.AllOf(s1, s2).ThenRun(EmptyFunc)
 			valueCh, errorCh := s3.Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 func TransformExternalRequest(req *flows.HTTPRequest) string {
@@ -180,13 +183,13 @@ func TransformExternalRequest(req *flows.HTTPRequest) string {
 
 func completeExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cs := flows.CurrentFlow().EmptyFuture()
 			cf := cs.ThenApply(strings.ToUpper)
 			cs.Complete("foo")
 			valueCh, errorCh := cf.Get()
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
 func ComposedFunc(msg string) flows.FlowFuture {
@@ -195,20 +198,20 @@ func ComposedFunc(msg string) flows.FlowFuture {
 
 func composedExample() {
 	flows.WithFlow(
-		func() {
+		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue("foo")
 			valueCh, errorCh := cf.ThenCompose(ComposedFunc).GetType(reflect.TypeOf(""))
-			printResult(valueCh, errorCh)
-		})
+			printResult(w, valueCh, errorCh)
+		}))
 }
 
-func printResult(valueCh chan interface{}, errorCh chan error) {
+func printResult(w io.Writer, valueCh chan interface{}, errorCh chan error) {
 	select {
 	case value := <-valueCh:
-		fmt.Printf("Flow succeeded with value %v", value)
+		fmt.Fprintf(w, "Flow succeeded with value %v", value)
 	case err := <-errorCh:
-		fmt.Printf("Flow failed with error %v", err)
+		fmt.Fprintf(w, "Flow failed with error %v", err)
 	case <-time.After(time.Minute * 1):
-		fmt.Printf("Timed out!")
+		fmt.Fprintf(w, "Timed out!")
 	}
 }

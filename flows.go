@@ -1,15 +1,21 @@
 package flow
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"reflect"
 	"runtime"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+
+	fdk "github.com/fnproject/fdk-go"
 )
+
+// TODO take this off pkg level to get a handle on a flow ?
 
 type HTTPRequest struct {
 	Headers http.Header
@@ -52,13 +58,15 @@ type FlowFuture interface {
 	Complete(value interface{}) bool
 }
 
-var debugMtx = &sync.Mutex{}
-var debugLog = false
+var debugMu uint32 // atomics are faster than mu lock/unlock
 
 func Debug(withDebug bool) {
-	debugMtx.Lock()
-	debugLog = withDebug
-	debugMtx.Unlock()
+	// go won't cast bool to uint32, you better believe it
+	var bint uint32
+	if withDebug {
+		bint++
+	}
+	atomic.StoreUint32(&debugMu, bint)
 	debug("Enabled debugging")
 }
 
@@ -67,9 +75,7 @@ func Log(msg string) {
 }
 
 func debug(msg string) {
-	debugMtx.Lock()
-	defer debugMtx.Unlock()
-	if debugLog {
+	if atomic.LoadUint32(&debugMu) == 1 {
 		fmt.Fprintln(os.Stderr, msg)
 	}
 }
@@ -101,18 +107,21 @@ func CurrentFlow() Flow {
 	return cf
 }
 
-func WithFlow(fn func()) {
-	codec := newCodec()
-	if codec.isContinuation() {
-		initFlow(codec, false)
-		handleInvocation(codec)
-		return
-	}
-	initFlow(codec, true)
-	defer cf.commit()
-	debug("Invoking user's main flow function")
-	fn()
-	debug("Completed invocation of user's main flow function")
+func WithFlow(fn fdk.Handler) fdk.Handler {
+	return fdk.HandlerFunc(func(ctx context.Context, in io.Reader, out io.Writer) {
+		codec := newCodec(ctx, in, out)
+		if codec.isContinuation() {
+			initFlow(codec, false)
+			handleInvocation(codec)
+			return
+		}
+		initFlow(codec, true)
+		defer cf.commit()
+		debug("Invoking user's main flow function")
+		// TODO do we want separate reader/writer here?
+		fn.Serve(ctx, in, out)
+		debug("Completed invocation of user's main flow function")
+	})
 }
 
 func initFlow(codec codec, shouldCreate bool) {
@@ -132,17 +141,6 @@ func initFlow(codec codec, shouldCreate bool) {
 		flowID: flowID,
 		codec:  codec,
 	}
-}
-
-// case insensitive lookup
-func lookupEnv(key string) (string, bool) {
-	for _, e := range os.Environ() {
-		kv := strings.SplitN(e, "=", 2)
-		if strings.ToLower(kv[0]) == strings.ToLower(key) {
-			return kv[1], true
-		}
-	}
-	return "", false
 }
 
 type flow struct {
