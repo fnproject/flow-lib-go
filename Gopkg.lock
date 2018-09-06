@@ -21,33 +21,45 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/fnproject/fdk-go"
+  packages = [
+    ".",
+    "utils"
+  ]
+  revision = "1eb29530716f262bad5b83eb9a5b3f7483636949"
+
+[[projects]]
   name = "github.com/go-openapi/analysis"
-  packages = ["."]
-  revision = "5957818e100395077187fb7ef3b8a28227af06c6"
+  packages = [
+    ".",
+    "internal"
+  ]
+  revision = "7c1bef8f6d9fa6148ce0d8a0ebf5339a084a6639"
+  version = "0.16.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/errors"
   packages = ["."]
-  revision = "b2b2befaf267d082d779bcef52d682a47c779517"
+  revision = "87bb653288778f8b0d922c5c3fb8b3f00a47ff28"
 
 [[projects]]
-  branch = "master"
   name = "github.com/go-openapi/jsonpointer"
   packages = ["."]
   revision = "3a0015ad55fa9873f41605d3e8f28cd279c32ab2"
+  version = "0.16.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/go-openapi/jsonreference"
   packages = ["."]
   revision = "3fb327e6747da3043567ee86abd02bb6376b6be2"
+  version = "0.16.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/go-openapi/loads"
   packages = ["."]
   revision = "2a2b323bab96e6b1fdee110e57d959322446e9c9"
+  version = "0.16.0"
 
 [[projects]]
   branch = "master"
@@ -62,31 +74,31 @@
     "middleware/untyped",
     "security"
   ]
-  revision = "c0cae94704c76c8643896d8054080f91e920105b"
+  revision = "d9c45e0a7fc845ce535233f4022219b66b240fd5"
 
 [[projects]]
-  branch = "master"
   name = "github.com/go-openapi/spec"
   packages = ["."]
-  revision = "bcff419492eeeb01f76e77d2ebc714dc97b607f5"
+  revision = "384415f06ee238aae1df5caad877de6ceac3a5c4"
+  version = "0.16.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/strfmt"
   packages = ["."]
-  revision = "481808443b00a14745fada967cb5eeff0f9b1df2"
+  revision = "6292e8b5de3b3535638b89eb165304ffa1e7cfae"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/swag"
   packages = ["."]
-  revision = "811b1089cde9dad18d4d0c2d09fbdbf28dbd27a5"
+  revision = "0dc164b7900e799f72456fa00bbdfbd362deed9b"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/validate"
   packages = ["."]
-  revision = "9286f6d0e5c1ffc7cf2bda1d59291dc3c4f2f828"
+  revision = "e0648ff405079d973622f8b2bf739ed3a1c5cd9b"
 
 [[projects]]
   branch = "master"
@@ -96,13 +108,13 @@
     "jlexer",
     "jwriter"
   ]
-  revision = "9825584555aa620c53c265d4a09ace0df1346fd9"
+  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
-  branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
+  revision = "fa473d140ef3c6adf42d6b391fe76707f1f243c8"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -112,7 +124,7 @@
     "context/ctxhttp",
     "idna"
   ]
-  revision = "1e491301e022f8f977054da4c2d852decd59571f"
+  revision = "8a410e7b638dca158bf9e766925842f6651ff828"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -143,7 +155,7 @@
     "bson",
     "internal/json"
   ]
-  revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+  revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -154,6 +166,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7066b3db1125614a89e6a57970be9d0291ab5d9106424cb2e41544a7344aeacd"
+  inputs-digest = "5ca18ac746d3b017d3465bf311e57141387d6e02dca0ef81860dc5627d146b71"
   solver-name = "gps-cdcl"
   solver-version = 1
