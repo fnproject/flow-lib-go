@@ -1,5 +1,9 @@
+schema_version: 20180708
 name: user/go-flow
 version: 0.0.1
 runtime: go
 entrypoint: ./func
-path: /hello-flow
+triggers:
+- name: user/go-flow
+  type: http
+  source: /user/go-flow
