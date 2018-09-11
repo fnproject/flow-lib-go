@@ -13,16 +13,16 @@ $ curl -LSs https://raw.githubusercontent.com/fnproject/cli/master/install | sh
 ## Start Services
 ```
 # start the fn server
-(fn start > /dev/null 2>&1 &)
 
-sleep 5
+   fn start -d
+
 
 # start the Flow Service and point it at the functions server API URL
 FNSERVER_IP=$(docker inspect --type container -f '{{.NetworkSettings.IPAddress}}' fnserver)
 
 docker run --rm -d \
      -p 8081:8081 \
-     -e API_URL="http://$FNSERVER_IP:8080/r" \
+     -e API_URL="http://$FNSERVER_IP:8080/invoke" \
      -e no_proxy=$FNSERVER_IP \
      --name flowserver \
      fnproject/flow:latest
@@ -41,6 +41,6 @@ make dep-up deploy-local
 
 You are now ready to invoke the example:
 ```
-fn call go-flow hello-flow/
+fn invoke go-flow hello-flow
 ```
 You should be able to see the following output: _Flow succeeded with value foo_
