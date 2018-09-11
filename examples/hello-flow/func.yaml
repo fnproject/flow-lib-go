@@ -1,9 +1,9 @@
 schema_version: 20180708
 name: go-flow
-version: 0.0.12
+version: 0.0.1
 runtime: go
 entrypoint: ./func
 triggers:
 - name: go-flow
   type: http
-  source: /user/go-flow
+  source: /go-flow

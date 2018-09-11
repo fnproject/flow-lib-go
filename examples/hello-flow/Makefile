@@ -20,7 +20,7 @@ deploy:
 	fn set config app go-flow COMPLETER_BASE_URL "http://$(FLOWSERVER_IP):8081"
 
 deploy-local:
-	fn deploy --app go-flow --local
+	fn -v  deploy --app go-flow --local
 	fn config app go-flow COMPLETER_BASE_URL "http://$(FLOWSERVER_IP):8081"
 
 invoke:
