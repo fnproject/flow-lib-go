@@ -6,4 +6,4 @@ entrypoint: ./func
 triggers:
 - name: go-flow
   type: http
-  source: /go-flow
+  source: /hello-flow
