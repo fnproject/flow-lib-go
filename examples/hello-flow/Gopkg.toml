@@ -1,3 +1,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/fnproject/flow-lib-go"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/fnproject/fdk-go"
