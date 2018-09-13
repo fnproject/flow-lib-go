@@ -26,7 +26,7 @@
     ".",
     "utils"
   ]
-  revision = "1eb29530716f262bad5b83eb9a5b3f7483636949"
+  revision = "ea2a4a610560f08c91d6a6d6f72d132900a8840a"
 
 [[projects]]
   branch = "master"
@@ -38,7 +38,16 @@
     "client/flow_service",
     "models"
   ]
-  revision = "f3925c081b20dd040f78b367b9718626350a18cd"
+  revision = "e08a90ff3b69f282e50ebe7b9f8627156f43159a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+  packages = [
+    "bson",
+    "internal/json"
+  ]
+  revision = "1ca0a4f7cbcbe61c005d1bd43fdd8bb8b71df6bc"
 
 [[projects]]
   name = "github.com/go-openapi/analysis"
@@ -86,7 +95,7 @@
     "middleware/untyped",
     "security"
   ]
-  revision = "d9c45e0a7fc845ce535233f4022219b66b240fd5"
+  revision = "41cb9a631c39f00f50d1a34b5ef0dd1fac745c15"
 
 [[projects]]
   name = "github.com/go-openapi/spec"
@@ -98,13 +107,13 @@
   branch = "master"
   name = "github.com/go-openapi/strfmt"
   packages = ["."]
-  revision = "6292e8b5de3b3535638b89eb165304ffa1e7cfae"
+  revision = "776114108ccc228238641096ea5be3d24842d4ea"
 
 [[projects]]
   branch = "master"
   name = "github.com/go-openapi/swag"
   packages = ["."]
-  revision = "0dc164b7900e799f72456fa00bbdfbd362deed9b"
+  revision = "dd0dad036e67ae93c27dc64337b3f76296f3a5f0"
 
 [[projects]]
   branch = "master"
@@ -136,7 +145,7 @@
     "context/ctxhttp",
     "idna"
   ]
-  revision = "8a410e7b638dca158bf9e766925842f6651ff828"
+  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -159,15 +168,6 @@
   ]
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
-
-[[projects]]
-  branch = "v2"
-  name = "gopkg.in/mgo.v2"
-  packages = [
-    "bson",
-    "internal/json"
-  ]
-  revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
