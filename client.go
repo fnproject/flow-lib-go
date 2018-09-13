@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -242,7 +243,9 @@ func (c *remoteFlowClient) get(flowID string, stageID string, rType reflect.Type
 	p := flowSvc.NewAwaitStageResultParams().WithFlowID(flowID).WithStageID(stageID)
 	ok, err := c.flows.AwaitStageResult(p)
 	if err != nil {
-		log.Fatalf("Failed to add value stage: %v", err)
+		debug(fmt.Sprintf("Failed to await stage result: %v", err))
+		errorCh <- err
+		return
 	}
 
 	result := ok.Payload.Result
@@ -260,6 +263,6 @@ func (c *remoteFlowClient) commit(flowID string) {
 	p := flowSvc.NewCommitParams().WithFlowID(flowID)
 	_, err := c.flows.Commit(p)
 	if err != nil {
-		log.Fatalf("Failed to create flow: %v", err)
+		log.Fatalf("Failed to commit flow: %v", err)
 	}
 }

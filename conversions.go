@@ -185,6 +185,12 @@ func datumToError(datum interface{}, flowID string, blobStore blobstore.BlobStor
 	case *models.ModelErrorDatum:
 		return errors.New(fmt.Sprintf("Platform error %v: %v", d.Type, d.Message))
 
+	case *models.ModelHTTPRespDatum:
+		var buf bytes.Buffer
+		blobStore.ReadBlob(flowID, d.Body.BlobID, d.Body.ContentType, func(b io.ReadCloser) { buf.ReadFrom(b) })
+		// use response body to create the error message
+		return errors.New(string(buf.Bytes()))
+
 	default:
 		panic(fmt.Sprintf("Failure result %v cannot be decoded to go type", reflect.TypeOf(datum)))
 	}
