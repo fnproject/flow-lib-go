@@ -16,6 +16,14 @@ import (
 
 func init() {
 	flows.Debug(true)
+
+	// you can override the default http.Client
+	// used to communicate with the flow service
+	// httpClient := &http.Client{
+	//     Timeout: time.Millisecond * 30,
+	// }
+	// flows.UseHTTPClient(httpClient)
+
 	flows.RegisterAction(strings.ToUpper)
 	flows.RegisterAction(strings.ToLower)
 	flows.RegisterAction(FooToUpper)
