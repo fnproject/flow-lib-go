@@ -1,4 +1,4 @@
-name: user/go-flow
+name: go-flow
 version: 0.0.1
 runtime: go
 entrypoint: ./func

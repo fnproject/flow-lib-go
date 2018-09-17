@@ -38,7 +38,7 @@
     "client/flow_service",
     "models"
   ]
-  revision = "e08a90ff3b69f282e50ebe7b9f8627156f43159a"
+  revision = "55cd664c7b933115c768045f21d9baefb5be65dd"
 
 [[projects]]
   branch = "master"
@@ -95,7 +95,7 @@
     "middleware/untyped",
     "security"
   ]
-  revision = "41cb9a631c39f00f50d1a34b5ef0dd1fac745c15"
+  revision = "9c75b2b632f58f9cb20e0767a724d5ebc37c2047"
 
 [[projects]]
   name = "github.com/go-openapi/spec"
