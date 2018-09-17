@@ -59,7 +59,16 @@ type FlowFuture interface {
 }
 
 var debugMu uint32 // atomics are faster than mu lock/unlock
+var httpClient *http.Client
 
+// UseHTTPClient allows the default http client to be overriden
+// for calls to the flow service. This function must be called
+// prior to flows.WithFlow to take effect (e.g. from an init method)
+func UseHTTPClient(client *http.Client) {
+	httpClient = client
+}
+
+// Debug enables internal library debugging
 func Debug(withDebug bool) {
 	// go won't cast bool to uint32, you better believe it
 	var bint uint32
@@ -70,6 +79,7 @@ func Debug(withDebug bool) {
 	debug("Enabled debugging")
 }
 
+// Log to stderr when Debug mode is enabled
 func Log(msg string) {
 	debug(msg)
 }
@@ -86,7 +96,7 @@ func getActionKey(actionFunc interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(actionFunc).Pointer()).Name()
 }
 
-// registers a go function so it can be used as an action
+// RegisterAction registers a go function so it can be used as an action
 // in a flow stage
 func RegisterAction(actionFunc interface{}) {
 	if reflect.TypeOf(actionFunc).Kind() != reflect.Func {

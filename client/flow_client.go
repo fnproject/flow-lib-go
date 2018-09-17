@@ -6,6 +6,8 @@ package client
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"net/http"
+
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 
@@ -44,9 +46,8 @@ func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *Flo
 	if cfg == nil {
 		cfg = DefaultTransportConfig()
 	}
-
 	// create transport and client
-	transport := httptransport.New(cfg.Host, cfg.BasePath, cfg.Schemes)
+	transport := httptransport.NewWithClient(cfg.Host, cfg.BasePath, cfg.Schemes, cfg.HTTPClient)
 	return New(transport, formats)
 }
 
@@ -73,9 +74,10 @@ func DefaultTransportConfig() *TransportConfig {
 // TransportConfig contains the transport related info,
 // found in the meta section of the spec file.
 type TransportConfig struct {
-	Host     string
-	BasePath string
-	Schemes  []string
+	Host       string
+	BasePath   string
+	Schemes    []string
+	HTTPClient *http.Client
 }
 
 // WithHost overrides the default host,
@@ -96,6 +98,12 @@ func (cfg *TransportConfig) WithBasePath(basePath string) *TransportConfig {
 // provided by the meta section of the spec file.
 func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 	cfg.Schemes = schemes
+	return cfg
+}
+
+// WithHTTPClient overrides the default HTTP client
+func (cfg *TransportConfig) WithHTTPClient(client *http.Client) *TransportConfig {
+	cfg.HTTPClient = client
 	return cfg
 }
 

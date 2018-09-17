@@ -3,6 +3,7 @@ package flow
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"reflect"
@@ -20,6 +21,17 @@ type remoteFlowClient struct {
 	blobStore blobstore.BlobStoreClient
 }
 
+func defaultHTTPClient() *http.Client {
+	tr := &http.Transport{
+		DisableKeepAlives: true,
+	}
+
+	return &http.Client{
+		Timeout:   time.Second * 30,
+		Transport: tr,
+	}
+}
+
 func newFlowClient() flowClient {
 	var completerURL string
 	var ok bool
@@ -31,10 +43,17 @@ func newFlowClient() flowClient {
 		log.Fatal("Invalid COMPLETER_BASE_URL provided!")
 	}
 
+	flowHTTPClient := httpClient
+	// allow library client to override http client
+	if flowHTTPClient == nil {
+		flowHTTPClient = defaultHTTPClient()
+	}
+
 	cfg := client.DefaultTransportConfig().
 		WithHost(cURL.Host).
 		WithBasePath(cURL.Path).
-		WithSchemes([]string{cURL.Scheme})
+		WithSchemes([]string{cURL.Scheme}).
+		WithHTTPClient(flowHTTPClient)
 
 	sc := client.NewHTTPClientWithConfig(nil, cfg)
 
