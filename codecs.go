@@ -9,16 +9,14 @@ import (
 )
 
 const (
-	method         = "FN_METHOD"
-	appName        = "FN_APP_NAME"
-	path           = "FN_PATH"
-	format         = "FN_FORMAT"
-	fnHeaderPrefix = "FN_HEADER_"
+	appName = "FN_APP_NAME"
+	fnID    = "FN_FN_ID"
+	format  = "FN_FORMAT"
 )
 
 type codec interface {
 	getAppName() string
-	getRoute() string
+	getFunctionID() string
 	isContinuation() bool
 	getFlowID() string
 	in() io.Reader
@@ -39,8 +37,8 @@ func (c *fdkCodec) getAppName() string {
 	return fdk.Context(c.ctx).Config[appName]
 }
 
-func (c *fdkCodec) getRoute() string {
-	return fdk.Context(c.ctx).Config[path]
+func (c *fdkCodec) getFunctionID() string {
+	return fdk.Context(c.ctx).Config[fnID]
 }
 
 func (c *fdkCodec) isContinuation() bool {
@@ -71,8 +69,4 @@ func (c *fdkCodec) in() io.Reader {
 
 func (c *fdkCodec) out() io.Writer {
 	return c.output
-}
-
-func getFunctionID(c codec) string {
-	return c.getAppName() + c.getRoute()
 }

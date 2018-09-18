@@ -138,7 +138,7 @@ func initFlow(codec codec, shouldCreate bool) {
 	client := newFlowClient()
 	var flowID string
 	if shouldCreate {
-		flowID = client.createFlow(getFunctionID(codec))
+		flowID = client.createFlow(codec.getFunctionID())
 		debug(fmt.Sprintf("Created new flow %v", flowID))
 	} else {
 		flowID = codec.getFlowID()
