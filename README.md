@@ -73,4 +73,4 @@ If a panic occurs while invoking the continuation function, the panic value will
 
 ### Can I invoke other fn functions?
 
-Yes. `flows.CurrentFlow().InvokeFunction("myapp/myfn", req)`. See [here](examples/hello-flow/func.go) for a full example.
+Yes. `flows.CurrentFlow().InvokeFunction("your_function_id", req)`. See [here](examples/hello-flow/func.go) for a full example.
