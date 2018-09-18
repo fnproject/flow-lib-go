@@ -13,7 +13,7 @@ $ curl -LSs https://raw.githubusercontent.com/fnproject/cli/master/install | sh
 ## Start Services
 ```
 # start the fn server
-(fn start > /dev/null 2>&1 &)
+fn start -d
 
 sleep 5
 
@@ -41,6 +41,10 @@ make dep-up deploy-local
 
 You are now ready to invoke the example:
 ```
-fn call go-flow hello-flow/
+make invoke
+```
+or
+```
+fn invoke go-flow go-flow
 ```
 You should be able to see the following output: _Flow succeeded with value foo_
