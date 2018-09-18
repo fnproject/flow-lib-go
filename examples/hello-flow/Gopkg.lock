@@ -38,7 +38,7 @@
     "client/flow_service",
     "models"
   ]
-  revision = "55cd664c7b933115c768045f21d9baefb5be65dd"
+  revision = "321a29e735403c54e446d5ca0c92dc709f7259a0"
 
 [[projects]]
   branch = "master"
@@ -95,7 +95,7 @@
     "middleware/untyped",
     "security"
   ]
-  revision = "9c75b2b632f58f9cb20e0767a724d5ebc37c2047"
+  revision = "1bd90842508346d9aae01eef6f2a062dcc8555e8"
 
 [[projects]]
   name = "github.com/go-openapi/spec"
@@ -142,7 +142,6 @@
   name = "golang.org/x/net"
   packages = [
     "context",
-    "context/ctxhttp",
     "idna"
   ]
   revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"

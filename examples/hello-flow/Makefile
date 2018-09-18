@@ -16,13 +16,13 @@ test:
 	go test -v -cover $(GOPACKAGES)
 
 deploy:
-	fn deploy --app go-flow 
+	fn --verbose deploy --app go-flow 
 	fn config app go-flow COMPLETER_BASE_URL "http://$(FLOWSERVER_IP):8081"
 
 deploy-local:
-	fn deploy --app go-flow --local
+	fn --verbose deploy --app go-flow --local
 	fn config app go-flow COMPLETER_BASE_URL "http://$(FLOWSERVER_IP):8081"
 
-call:
-	fn call go-flow hello-flow/
+invoke:
+	fn invoke go-flow go-flow
 
