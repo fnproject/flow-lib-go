@@ -34,15 +34,15 @@ func init() {
 
 func main() {
 	fdk.Handle(stringExample())
-	//errorValueExample()
-	//errorFuncExample()
-	//structExample()
-	//composedExample()
-	//delayExample()
-	//invokeExample()
-	//completeExample()
-	//anyOfExample()
-	//allOfExample()
+	//fdk.Handle(errorValueExample())
+	//fdk.Handle(errorFuncExample())
+	//fdk.Handle(structExample())
+	//fdk.Handle(composedExample())
+	//fdk.Handle(delayExample())
+	//fdk.Handle(invokeExample())
+	//fdk.Handle(completeExample())
+	//fdk.Handle(anyOfExample())
+	//fdk.Handle(allOfExample())
 }
 
 func stringExample() fdk.Handler {
@@ -54,8 +54,8 @@ func stringExample() fdk.Handler {
 		}))
 }
 
-func errorValueExample() {
-	flows.WithFlow(
+func errorValueExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue(errors.New("foo"))
 			valueCh, errorCh := cf.ThenApply(strings.ToUpper).ThenApply(strings.ToLower).Get()
@@ -76,8 +76,8 @@ func HandleFunc(arg string, err error) string {
 	}
 }
 
-func errorFuncExample() {
-	flows.WithFlow(
+func errorFuncExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue("hello")
 			valueCh, errorCh := cf.ThenApply(FailedFunc).Handle(HandleFunc).Get()
@@ -94,8 +94,8 @@ func FooToUpper(f *foo) *foo {
 	return f
 }
 
-func structExample() {
-	flows.WithFlow(
+func structExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue(&foo{Name: "foo"})
 			valueCh, errorCh := cf.ThenApply(FooToUpper).Get()
@@ -107,8 +107,8 @@ func EmptyFunc() string {
 	return "empty func"
 }
 
-func delayExample() {
-	flows.WithFlow(
+func delayExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().Delay(5 * time.Second).ThenApply(EmptyFunc)
 			valueCh, errorCh := cf.Get()
@@ -121,19 +121,20 @@ type GreetingRequest struct {
 }
 
 type GreetingResponse struct {
-	Name       string `json:"name"`
-	Salutation string `json:"salutation"`
+	Msg string `json:"message"`
 }
 
-func invokeExample() {
-	flows.WithFlow(
+func invokeExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			greeting, err := json.Marshal(GreetingRequest{Name: "Charles"})
 			if err != nil {
 				panic("failed to marshal greeting")
 			}
 			req := &flows.HTTPRequest{Method: "POST", Body: greeting}
-			cf := flows.CurrentFlow().InvokeFunction("examples/greeter", req)
+                        // TODO replace the ID below with the function ID of target function to invoke
+                        // see https://github.com/fnproject/flow-lib-go/tree/master/examples/greeter/README.md
+			cf := flows.CurrentFlow().InvokeFunction("01CQV4NEGMNG8G00GZJ0000002", req)
 			valueCh, errorCh := cf.Get()
 
 			select {
@@ -153,8 +154,8 @@ func invokeExample() {
 		}))
 }
 
-func anyOfExample() {
-	flows.WithFlow(
+func anyOfExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 
 			cf := flows.CurrentFlow()
@@ -167,8 +168,8 @@ func anyOfExample() {
 		}))
 }
 
-func allOfExample() {
-	flows.WithFlow(
+func allOfExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 
 			cf := flows.CurrentFlow()
@@ -187,8 +188,8 @@ func TransformExternalRequest(req *flows.HTTPRequest) string {
 	return result
 }
 
-func completeExample() {
-	flows.WithFlow(
+func completeExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cs := flows.CurrentFlow().EmptyFuture()
 			cf := cs.ThenApply(strings.ToUpper)
@@ -202,8 +203,8 @@ func ComposedFunc(msg string) flows.FlowFuture {
 	return flows.CurrentFlow().CompletedValue("Hello " + msg)
 }
 
-func composedExample() {
-	flows.WithFlow(
+func composedExample() fdk.Handler {
+	return flows.WithFlow(
 		fdk.HandlerFunc(func(ctx context.Context, r io.Reader, w io.Writer) {
 			cf := flows.CurrentFlow().CompletedValue("foo")
 			valueCh, errorCh := cf.ThenCompose(ComposedFunc).GetType(reflect.TypeOf(""))
