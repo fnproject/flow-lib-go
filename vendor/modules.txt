@@ -1,0 +1,56 @@
+# github.com/PuerkitoBio/purell v1.1.0
+github.com/PuerkitoBio/purell
+# github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
+github.com/PuerkitoBio/urlesc
+# github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
+github.com/asaskevich/govalidator
+# github.com/fnproject/fdk-go v0.0.0-20190102214815-bd24a5aa63cf
+github.com/fnproject/fdk-go
+# github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+github.com/globalsign/mgo/bson
+github.com/globalsign/mgo/internal/json
+# github.com/go-openapi/analysis v0.18.0
+github.com/go-openapi/analysis
+github.com/go-openapi/analysis/internal
+# github.com/go-openapi/errors v0.18.0
+github.com/go-openapi/errors
+# github.com/go-openapi/jsonpointer v0.17.2
+github.com/go-openapi/jsonpointer
+# github.com/go-openapi/jsonreference v0.18.0
+github.com/go-openapi/jsonreference
+# github.com/go-openapi/loads v0.18.0
+github.com/go-openapi/loads
+# github.com/go-openapi/runtime v0.18.0
+github.com/go-openapi/runtime
+github.com/go-openapi/runtime/client
+github.com/go-openapi/runtime/logger
+github.com/go-openapi/runtime/middleware
+github.com/go-openapi/runtime/middleware/denco
+github.com/go-openapi/runtime/middleware/header
+github.com/go-openapi/runtime/middleware/untyped
+github.com/go-openapi/runtime/security
+# github.com/go-openapi/spec v0.18.0
+github.com/go-openapi/spec
+# github.com/go-openapi/strfmt v0.17.2
+github.com/go-openapi/strfmt
+# github.com/go-openapi/swag v0.18.0
+github.com/go-openapi/swag
+# github.com/go-openapi/validate v0.18.0
+github.com/go-openapi/validate
+# github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329
+github.com/mailru/easyjson/jlexer
+github.com/mailru/easyjson/jwriter
+github.com/mailru/easyjson/buffer
+# github.com/mitchellh/mapstructure v1.1.2
+github.com/mitchellh/mapstructure
+# golang.org/x/net v0.0.0-20181220203305-927f97764cc3
+golang.org/x/net/context
+golang.org/x/net/idna
+# golang.org/x/text v0.3.0
+golang.org/x/text/unicode/norm
+golang.org/x/text/width
+golang.org/x/text/secure/bidirule
+golang.org/x/text/unicode/bidi
+golang.org/x/text/transform
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2
