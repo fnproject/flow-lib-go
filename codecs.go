@@ -15,7 +15,7 @@ const (
 )
 
 type codec interface {
-	getAppName() string
+	getAppID() string
 	getFunctionID() string
 	isContinuation() bool
 	getFlowID() string
@@ -33,12 +33,12 @@ func newCodec(ctx context.Context, in io.Reader, out io.Writer) codec {
 	return &fdkCodec{ctx, in, out}
 }
 
-func (c *fdkCodec) getAppName() string {
-	return fdk.Context(c.ctx).Config[appName]
+func (c *fdkCodec) getAppID() string {
+	return fdk.GetContext(c.ctx).AppID()
 }
 
 func (c *fdkCodec) getFunctionID() string {
-	return fdk.Context(c.ctx).Config[fnID]
+	return fdk.GetContext(c.ctx).FnID()
 }
 
 func (c *fdkCodec) isContinuation() bool {
@@ -55,10 +55,10 @@ func (c *fdkCodec) getFlowID() string {
 }
 
 func (c *fdkCodec) getHeader(header string) (string, bool) {
-	//debug(fmt.Sprintf("headers: %v", fdk.Context(c.ctx).Header))
+	//debug(fmt.Sprintf("headers: %v", fdk.GetContext(c.ctx).Header))
 	//debug(fmt.Sprintf("env: %v", os.Environ()))
 
-	v := fdk.Context(c.ctx).Header.Get(header)
+	v := fdk.GetContext(c.ctx).Header().Get(header)
 	debug(fmt.Sprintf("header: %s %v %s", header, v != "", v))
 	return v, v != ""
 }
